@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TiDB Cloud · Global Lead Pipeline</title>
+  <!-- TiDB brand font (Moderat), fallback to Inter -->
+  <style>
+    @font-face {
+      font-family: 'Moderat';
+      src: url('https://static.pingcap.com/files/2023/09/12075953/moderat-regular.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Moderat';
+      src: url('https://static.pingcap.com/files/2023/09/12075953/moderat-medium.woff2') format('woff2');
+      font-weight: 500; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Moderat';
+      src: url('https://static.pingcap.com/files/2023/09/12075953/moderat-bold.woff2') format('woff2');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      /* ── TiDB Official Brand Tokens ─────────────────────────────── */
+      --tidb-red:    #DC150B;   /* exact logo red from SVG             */
+      --tidb-blue:   #1863dc;   /* interactive blue (links / CTAs)     */
+      --tidb-dark:   #0e0e0e;   /* primary dark bg (matches pingcap.com)*/
+      --tidb-surface:#18181b;   /* elevated surface                    */
+
+      /* ── Semantic aliases ───────────────────────────────────────── */
+      --bg:       var(--tidb-dark);
+      --surface:  #1a1a1a;
+      --border:   #2a2a2a;
+      --accent:   var(--tidb-blue);
+      --accent2:  #0056a7;
+      --text:     #f5f5f5;
+      --muted:    #888888;
+      --hot:      var(--tidb-red);   /* TiDB brand red for hot/urgent */
+      --warm:     #f59e0b;
+      --cool:     #38bdf8;
+      --green:    #22c55e;
+      --red:      var(--tidb-red);
+      --sidebar:  240px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Moderat", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar);
+      min-width: var(--sidebar);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    #sidebar-logo {
+      padding: 16px 16px 14px;
+      border-bottom: 1px solid var(--border);
+      /* TiDB brand: red top bar + warm radial glow (mirrors pingcap.com nav) */
+      border-top: 3px solid var(--tidb-red);
+      background: radial-gradient(ellipse 140% 80% at 50% -20%,
+        rgba(220,21,11,0.18) 0%,
+        rgba(220,21,11,0.05) 50%,
+        transparent 100%);
+      position: relative;
+    }
+    #sidebar-logo img {
+      height: 26px;
+      width: auto;
+      display: block;
+      margin-bottom: 6px;
+      filter: brightness(1);
+    }
+    #sidebar-logo p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-section { padding: 12px 0 4px; }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+      padding: 0 16px 6px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 16px;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.1s;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .sidebar-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .sidebar-item.active { background: rgba(220,21,11,0.10); color: var(--tidb-red); border-left: 2px solid var(--tidb-red); }
+    .sidebar-item.region-header {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text);
+      padding-top: 10px;
+      cursor: pointer;
+    }
+    .sidebar-item.region-header:hover { background: rgba(255,255,255,0.04); }
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      color: var(--muted);
+    }
+    .badge.hot { background: rgba(220,21,11,0.18); color: var(--tidb-red); }
+
+    /* ── Geo tabs ───────────────────────────────────────────────────── */
+    #geo-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+    }
+    .geo-tab {
+      flex: 1;
+      padding: 9px 4px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .geo-tab:hover { color: var(--text); }
+    .geo-tab.active { color: var(--tidb-red); border-bottom-color: var(--tidb-red); }
+
+    /* ── Main ───────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ────────────────────────────────────────────────────── */
+    #topbar {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      /* Subtle TiDB red glow bleeding down from the top, same as pingcap.com header */
+      background: linear-gradient(180deg,
+        rgba(220,21,11,0.06) 0%,
+        rgba(14,14,14,1) 60%);
+      background-color: #111111;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    #topbar h2 { font-size: 15px; font-weight: 600; flex: 1; letter-spacing: -0.2px; }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-size: 12px; color: var(--muted); }
+    select, input[type="range"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+    select:focus { border-color: var(--accent); }
+    #score-label { font-size: 12px; color: var(--accent); font-weight: 600; min-width: 20px; }
+    #stats-bar {
+      display: flex;
+      gap: 20px;
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(220,21,11,0.03);
+      flex-shrink: 0;
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-val { font-size: 20px; font-weight: 700; color: var(--text); }
+    .stat-val.accent { color: var(--accent); }
+    .stat-val.hot { color: var(--hot); }
+    .stat-val.green { color: var(--green); }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── Table ──────────────────────────────────────────────────────── */
+    #table-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 0 24px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+    }
+    th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: top;
+    }
+    tr:hover td { background: rgba(255,255,255,0.025); }
+
+    /* Company cell */
+    .company-cell { display: flex; align-items: flex-start; gap: 10px; }
+    .company-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .company-logo-placeholder {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: rgba(220,21,11,0.12);
+      border: 1px solid rgba(220,21,11,0.25);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--tidb-red);
+      margin-top: 1px;
+    }
+    .company-info { min-width: 0; }
+    .company-name { font-weight: 600; color: var(--text); }
+    .company-name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .company-name a:hover { color: var(--accent); }
+    .company-meta { font-size: 11px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+    /* Industry pill */
+    .industry-pill {
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: rgba(24,99,220,0.15);
+      color: #60a5fa;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+    /* Size pill */
+    .size-pill {
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Collapsible text */
+    .collapsible-cell { max-width: 260px; }
+    .collapsible-text {
+      line-height: 1.5;
+      color: var(--muted);
+      font-size: 13px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .collapsible-text.expanded {
+      display: block;
+      -webkit-line-clamp: unset;
+    }
+    .expand-btn {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      margin-top: 3px;
+      display: inline-block;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .expand-btn:hover { text-decoration: underline; }
+
+    /* Pain cell */
+    .pain-cell { max-width: 280px; }
+    .pain-section { margin-bottom: 6px; }
+    .pain-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
+    }
+    .pain-label.pain-color { color: var(--accent); }
+    .pain-label.use-case-color { color: var(--cool); }
+    .pain-body {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .pain-body.expanded {
+      display: block;
+      -webkit-line-clamp: unset;
+    }
+
+    /* Contacts */
+    .contacts { display: flex; flex-wrap: wrap; gap: 5px; max-width: 200px; }
+    .contact-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(24,99,220,0.15);
+      color: #60a5fa;
+      white-space: nowrap;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.1s;
+    }
+    .contact-tag:hover {
+      background: rgba(24,99,220,0.28);
+      color: #93c5fd;
+    }
+    .contact-tag .li-icon {
+      font-size: 9px;
+      opacity: 0.7;
+    }
+
+    /* Score badge */
+    .score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .score-9, .score-10 { background: rgba(220,21,11,0.2);  color: var(--tidb-red); }
+    .score-7, .score-8  { background: rgba(245,158,11,0.2); color: var(--warm); }
+    .score-5, .score-6  { background: rgba(24,99,220,0.2);  color: var(--accent); }
+    .score-1, .score-2, .score-3, .score-4 { background: rgba(136,136,136,0.15); color: var(--muted); }
+
+    /* Status dropdown */
+    .status-select {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: var(--surface);
+    }
+    .status-new          { border-color: var(--border); color: var(--muted); }
+    .status-contacted    { border-color: #22d3ee44; color: var(--cool); background: rgba(34,211,238,0.07); }
+    .status-qualified    { border-color: #22c55e44; color: var(--green); background: rgba(34,197,94,0.07); }
+    .status-disqualified { border-color: #ef444444; color: var(--red); background: rgba(239,68,68,0.07); }
+
+    /* Contacted flash */
+    @keyframes contactedFlash {
+      0%   { background: rgba(34,211,238,0.18); }
+      100% { background: transparent; }
+    }
+    tr.just-contacted td { animation: contactedFlash 1.2s ease-out; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.toast-warn { border-color: var(--warm); color: var(--warm); }
+    .toast.toast-info { border-color: var(--accent); }
+
+    /* Search bar */
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 6px 36px 6px 12px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .search-mode-badge {
+      display: none;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(24,99,220,0.2);
+      color: var(--accent);
+      white-space: nowrap;
+      align-self: center;
+    }
+    .search-mode-badge.visible { display: inline-block; }
+    .similarity-pill {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: rgba(24,99,220,0.2);
+      color: var(--accent);
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    /* Export buttons */
+    .export-btn {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+      white-space: nowrap;
+    }
+    .export-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--accent); }
+    .export-btn.sheets:hover { border-color: #22c55e; }
+
+    /* Loading / empty */
+    #loading, #empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--tidb-red);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Column widths ──────────────────────────────────────────────── */
+    table th:nth-child(1), table td:nth-child(1) { max-width: 200px; overflow: hidden; }
+    table th:nth-child(2), table td:nth-child(2) { max-width: 100px; white-space: nowrap; }
+    table th:nth-child(3), table td:nth-child(3) { max-width: 180px; }
+    table th:nth-child(4), table td:nth-child(4) { min-width: 280px; max-width: 360px; }
+    table th:nth-child(5), table td:nth-child(5) { min-width: 200px; max-width: 300px; }
+    table th:nth-child(6), table td:nth-child(6) { max-width: 180px; }
+    table th:nth-child(7), table td:nth-child(7) { width: 60px; }
+    table th:nth-child(8), table td:nth-child(8) { width: 100px; }
+
+    /* ── Sidebar checkboxes ─────────────────────────────────────────── */
+    .country-cb, .select-all-cb { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .sidebar-item.region-header { cursor: default; }
+    .sidebar-item.region-header:hover { background: rgba(255,255,255,0.02); }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+<nav id="sidebar">
+  <div id="sidebar-logo">
+    <img src="https://static.pingcap.com/files/2022/08/07073128/logo-TiDB-1.svg" alt="TiDB" />
+    <p id="sidebar-subtitle">Global Pipeline Dashboard</p>
+  </div>
+
+  <!-- Geo selector tabs -->
+  <div id="geo-tabs">
+    <div class="geo-tab active" data-geo="EMEA"     onclick="setGeo('EMEA')">EMEA</div>
+    <div class="geo-tab"        data-geo="NAMERICA" onclick="setGeo('NAMERICA')">Americas</div>
+    <div class="geo-tab"        data-geo="APAC"     onclick="setGeo('APAC')">APAC</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">View</div>
+    <div class="sidebar-item active" id="all-geo-item" data-country="" data-region="" onclick="setFilter(this,'','')">
+      All EMEA
+      <span class="badge" id="badge-all">—</span>
+    </div>
+  </div>
+
+  <div id="region-tree" class="sidebar-section">
+    <!-- Populated by JS -->
+  </div>
+</nav>
+
+<!-- ── Main ────────────────────────────────────────────────────────── -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="view-title">All EMEA</h2>
+
+    <div class="search-wrap">
+      <input type="text" id="search-input" placeholder="Search: branching, vector, AI agents…"
+             oninput="onSearchInput()" onkeydown="if(event.key==='Escape'){clearSearch()}">
+      <span class="search-icon">⌕</span>
+    </div>
+    <span class="search-mode-badge" id="search-badge">Vector Search</span>
+
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="status-filter" onchange="loadLeads()">
+        <option value="">All</option>
+        <option value="new">New</option>
+        <option value="contacted">Contacted</option>
+        <option value="qualified">Qualified</option>
+        <option value="disqualified">Disqualified</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Industry</label>
+      <select id="industry-filter" onchange="applyClientFilters()" style="max-width:140px">
+        <option value="">All</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Min score</label>
+      <input type="range" id="score-filter" min="1" max="10" value="1"
+             oninput="document.getElementById('score-label').textContent=this.value; loadLeads()">
+      <span id="score-label">1</span>
+    </div>
+
+    <div class="filter-group" style="margin-left:8px; gap:6px;">
+      <button class="export-btn" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
+      <button class="export-btn sheets" onclick="exportSheets()" title="Open in Google Sheets">📊 Sheets</button>
+      <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div id="stats-bar">
+    <div class="stat">
+      <span class="stat-val accent" id="s-total">—</span>
+      <span class="stat-label">Total leads</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val hot" id="s-hot">—</span>
+      <span class="stat-label">Hot (8–10)</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val green" id="s-contacted">—</span>
+      <span class="stat-label">Contacted</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val" id="s-avg">—</span>
+      <span class="stat-label">Avg fit score</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val" id="s-countries">—</span>
+      <span class="stat-label">Countries</span>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div id="loading" style="display:none">
+      <div class="spinner"></div> Loading leads…
+    </div>
+    <div id="empty" style="display:none">No leads found for this filter.</div>
+    <div id="error" style="display:none; color:var(--red); padding: 40px 24px; font-size:14px;"></div>
+
+    <table id="leads-table">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Country</th>
+          <th>Description</th>
+          <th>TiDB Pain / Use Case</th>
+          <th>Recommendation</th>
+          <th>ICP Contacts</th>
+          <th>Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="leads-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────
+  let currentGeo        = 'EMEA';
+  let currentLeads      = [];
+  let selectedCountries = new Set();
+  let allRegions        = {};
+  let allSummary        = [];
+
+  // ── API cache (5 min TTL) ─────────────────────────────────────────────
+  const _apiCache = new Map();
+  async function cachedFetch(url) {
+    const hit = _apiCache.get(url);
+    if (hit && Date.now() < hit.exp) return hit.data;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    _apiCache.set(url, { data, exp: Date.now() + 300000 });
+    return data;
+  }
+
+  // ── On load ──────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', async () => {
+    [allRegions, allSummary] = await Promise.all([
+      cachedFetch('/api/regions'),
+      cachedFetch('/api/summary'),
+    ]);
+    buildSidebar();
+    await loadLeads();
+  });
+
+  // ── Geo switcher ─────────────────────────────────────────────────────
+  function setGeo(geo) {
+    currentGeo        = geo;
+    selectedCountries = new Set();
+    document.querySelectorAll('.geo-tab').forEach(t => t.classList.toggle('active', t.dataset.geo === geo));
+    const geoLabel = { EMEA: 'All EMEA', NAMERICA: 'All Americas', APAC: 'All APAC' }[geo] || `All ${geo}`;
+    const allItem  = document.getElementById('all-geo-item');
+    allItem.childNodes[0].textContent = geoLabel + ' ';
+    buildSidebar();
+    document.getElementById('view-title').textContent = geoLabel;
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    allItem.classList.add('active');
+    clearSearch();
+    loadLeads();
+  }
+
+  // ── Sidebar ──────────────────────────────────────────────────────────
+  function buildSidebar() {
+    const geoData      = allRegions[currentGeo] || {};
+    const countryCount = {};
+    let geoTotal       = 0;
+    for (const row of allSummary) {
+      if (row.geo === currentGeo || (!row.geo && currentGeo === 'EMEA')) {
+        countryCount[row.country] = { total: parseInt(row.total), hot: parseInt(row.hot) };
+        geoTotal += parseInt(row.total);
+      }
+    }
+    document.getElementById('badge-all').textContent = geoTotal || '—';
+    const tree = document.getElementById('region-tree');
+    tree.innerHTML = '';
+    for (const [region, countries] of Object.entries(geoData)) {
+      const active      = countries.filter(c => countryCount[c]?.total > 0);
+      const regionTotal = active.reduce((s, c) => s + countryCount[c].total, 0);
+      if (regionTotal === 0) continue;
+      const allChecked  = active.length > 0 && active.every(c => selectedCountries.has(c));
+      const someChecked = active.some(c => selectedCountries.has(c));
+      const rDiv = document.createElement('div');
+      rDiv.className = 'sidebar-item region-header';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'select-all-cb';
+      cb.checked = allChecked; cb.indeterminate = someChecked && !allChecked;
+      cb.addEventListener('change', (e) => { e.stopPropagation(); toggleSubRegion(region, e.target.checked); });
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;font-weight:600;font-size:12px;color:var(--text)';
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' ' + region));
+      const badge = document.createElement('span');
+      badge.className = 'badge'; badge.textContent = regionTotal;
+      rDiv.appendChild(lbl); rDiv.appendChild(badge);
+      tree.appendChild(rDiv);
+      for (const country of countries) {
+        const info = countryCount[country];
+        if (!info || info.total === 0) continue;
+        const cDiv = document.createElement('div');
+        cDiv.className = 'sidebar-item'; cDiv.style.paddingLeft = '20px';
+        const ccb = document.createElement('input');
+        ccb.type = 'checkbox'; ccb.className = 'country-cb';
+        ccb.checked = selectedCountries.has(country);
+        ccb.addEventListener('change', () => toggleCountry(country));
+        const clbl = document.createElement('label');
+        clbl.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;cursor:pointer';
+        clbl.appendChild(ccb);
+        clbl.insertAdjacentHTML('beforeend', ' ' + flag(country) + ' ' + country);
+        const hb = document.createElement('span');
+        hb.className = info.hot > 0 ? 'badge hot' : 'badge';
+        hb.textContent = info.hot > 0 ? '🔥 ' + info.hot : info.total;
+        cDiv.appendChild(clbl); cDiv.appendChild(hb);
+        tree.appendChild(cDiv);
+      }
+    }
+  }
+
+  function toggleCountry(country) {
+    if (selectedCountries.has(country)) selectedCountries.delete(country);
+    else selectedCountries.add(country);
+    buildSidebar(); applyClientFilters();
+  }
+
+  function toggleSubRegion(region, checked) {
+    const countries = (allRegions[currentGeo] || {})[region] || [];
+    countries.forEach(c => { if (checked) selectedCountries.add(c); else selectedCountries.delete(c); });
+    buildSidebar(); applyClientFilters();
+  }
+
+  function setFilter(el, country, region) {
+    selectedCountries = new Set();
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    const geoLabel = { EMEA: 'All EMEA', NAMERICA: 'All Americas', APAC: 'All APAC' }[currentGeo] || `All ${currentGeo}`;
+    document.getElementById('view-title').textContent = geoLabel;
+    clearSearch(); loadLeads();
+  }
+
+  // ── Client-side filtering ─────────────────────────────────────────────
+  function applyClientFilters() {
+    const industry = document.getElementById('industry-filter').value;
+    let filtered = currentLeads;
+    if (selectedCountries.size > 0) filtered = filtered.filter(l => selectedCountries.has(l.country));
+    if (industry)                    filtered = filtered.filter(l => l.industry === industry);
+    updateTitle();
+    const empty = document.getElementById('empty');
+    const table = document.getElementById('leads-table');
+    if (!filtered.length) {
+      empty.style.display = 'flex'; table.style.display = 'none'; updateStats([]);
+    } else {
+      empty.style.display = 'none'; table.style.display = 'table';
+      renderTable(filtered); updateStats(filtered);
+    }
+  }
+
+  function updateTitle() {
+    const geoLabel = { EMEA: 'All EMEA', NAMERICA: 'All Americas', APAC: 'All APAC' }[currentGeo] || `All ${currentGeo}`;
+    if (selectedCountries.size === 1)    document.getElementById('view-title').textContent = [...selectedCountries][0];
+    else if (selectedCountries.size > 1) document.getElementById('view-title').textContent = selectedCountries.size + ' countries';
+    else                                 document.getElementById('view-title').textContent = geoLabel;
+  }
+
+  function updateIndustryDropdown() {
+    const sel = document.getElementById('industry-filter');
+    const cur = sel.value;
+    const inds = [...new Set(currentLeads.map(l => l.industry).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">All Industries</option>';
+    inds.forEach(ind => {
+      const opt = document.createElement('option');
+      opt.value = ind; opt.textContent = ind;
+      if (ind === cur) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── Leads loader ─────────────────────────────────────────────────────
+  async function loadLeads() {
+    const score  = document.getElementById('score-filter').value;
+    const status = document.getElementById('status-filter').value;
+    const params = new URLSearchParams({ min_score: score });
+    if (currentGeo) params.set('geo',    currentGeo);
+    if (status)     params.set('status', status);
+    document.getElementById('loading').style.display     = 'flex';
+    document.getElementById('empty').style.display       = 'none';
+    document.getElementById('error').style.display       = 'none';
+    document.getElementById('leads-table').style.display = 'none';
+    let leads;
+    try {
+      leads = await cachedFetch('/api/leads?' + params);
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      const errEl = document.getElementById('error');
+      errEl.textContent = '⚠️ Failed to load leads: ' + e.message;
+      errEl.style.display = 'block';
+      return;
+    }
+    document.getElementById('loading').style.display = 'none';
+    currentLeads = leads;
+    updateIndustryDropdown();
+    if (!leads.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
+    applyClientFilters();
+  }
+
+  // ── Refresh ──────────────────────────────────────────────────────────
+  async function refreshData() {
+    _apiCache.clear();
+    [allRegions, allSummary] = await Promise.all([cachedFetch('/api/regions'), cachedFetch('/api/summary')]);
+    buildSidebar(); await loadLeads(); showToast('Data refreshed.');
+  }
+
+  // ── Render table ──────────────────────────────────────────────────────
+  function renderTable(leads) {
+    const tbody = document.getElementById('leads-body');
+    tbody.innerHTML = '';
+    for (const lead of leads) {
+      const tr = document.createElement('tr');
+      tr.dataset.leadId = lead.id;
+      tr.innerHTML = `
+        <td>
+          <div class="company-cell">
+            ${logoCell(lead)}
+            <div class="company-info">
+              <div class="company-name">
+                <a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a>
+              </div>
+              <div class="company-meta">
+                ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
+                ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div>${flag(lead.country)} ${esc(lead.country)}</div>
+          <div class="company-meta" style="font-size:11px">${esc(lead.region)}</div>
+        </td>
+        <td>
+          <div class="collapsible-cell">
+            <div class="collapsible-text" id="desc-${lead.id}">${esc(lead.description || '—')}</div>
+            ${(lead.description || '').length > 120 ? `<button class="expand-btn" onclick="toggleExpand('desc-${lead.id}', this)">Show more</button>` : ''}
+          </div>
+        </td>
+        <td><div class="pain-cell">${painCell(lead)}</div></td>
+        <td><div class="pain-cell">${recCell(lead)}</div></td>
+        <td><div class="contacts">${contactTags(lead)}</div></td>
+        <td><span class="score score-${lead.fit_score}">${lead.fit_score}</span></td>
+        <td>
+          <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
+            <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
+            <option value="contacted"    ${lead.status==='contacted'    ? 'selected':''}>Contacted ✓</option>
+            <option value="qualified"    ${lead.status==='qualified'    ? 'selected':''}>Qualified ⭐</option>
+            <option value="disqualified" ${lead.status==='disqualified' ? 'selected':''}>Disqualified</option>
+          </select>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function logoCell(lead) {
+    if (!lead.website) return `<div class="company-logo-placeholder">${esc(lead.company_name[0] || '?')}</div>`;
+    const domain  = getDomain(lead.website);
+    const initial = esc(lead.company_name[0] || '?');
+    return `<img class="company-logo" src="https://logo.clearbit.com/${domain}" alt=""
+      onerror="this.outerHTML='<div class=\\'company-logo-placeholder\\'>${initial}</div>'" />`;
+  }
+
+  function painCell(lead) {
+    const painId    = 'pain-' + lead.id;
+    const usecaseId = 'uc-'   + lead.id;
+    const painText  = lead.tidb_pain     || '—';
+    const ucText    = lead.tidb_use_case || '';
+    return `
+      <div class="pain-section">
+        <div class="pain-label pain-color">Pain</div>
+        <div class="pain-body" id="${painId}">${esc(painText)}</div>
+        ${painText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${painId}', this)">Show more</button>` : ''}
+      </div>
+      ${ucText ? `
+      <div class="pain-section">
+        <div class="pain-label use-case-color">Use case</div>
+        <div class="pain-body" id="${usecaseId}">${esc(ucText)}</div>
+        ${ucText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${usecaseId}', this)">Show more</button>` : ''}
+      </div>` : ''}
+    `;
+  }
+
+  function recCell(lead) {
+    const rec   = lead.outreach_recommendation || '';
+    const cases = lead.matched_case_studies || [];
+    const recId = 'rec-' + lead.id;
+    let html = '';
+    if (rec) {
+      html += `<div class="pain-body" id="${recId}" style="color:var(--text)">${esc(rec)}</div>`;
+      if (rec.length > 120) html += `<button class="expand-btn" onclick="toggleExpand('${recId}', this)">Show more</button>`;
+    }
+    if (cases.length) {
+      html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">';
+      for (const cs of cases) {
+        html += `<a href="${esc(cs.url)}" target="_blank" rel="noopener" class="contact-tag" style="font-size:10px;white-space:normal;line-height:1.3">${esc(cs.title)} <span style="opacity:0.6">${cs.similarity}%</span></a>`;
+      }
+      html += '</div>';
+    }
+    return html || '<span style="color:var(--muted);font-size:11px">—</span>';
+  }
+
+  function contactTags(lead) {
+    const contacts = lead.contacts || [];
+    if (!contacts.length) return '<span style="color:var(--muted);font-size:11px">—</span>';
+    return contacts.map(c => {
+      const role        = c.role || c;
+      const displayName = (typeof c === 'object' && c.name) ? c.name : role;
+      const liUrl       = (typeof c === 'object' && c.linkedin_url) ? c.linkedin_url : linkedInSearchUrl(role, lead.company_name);
+      return `<a class="contact-tag" href="${esc(liUrl)}" target="_blank" rel="noopener" title="${esc(role)}">${esc(displayName)}<span class="li-icon">in</span></a>`;
+    }).join('');
+  }
+
+  function linkedInSearchUrl(role, companyName) {
+    return 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(role + ' ' + companyName) + '&origin=GLOBAL_SEARCH_HEADER';
+  }
+
+  function getDomain(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } }
+
+  function toggleExpand(id, btn) {
+    const el = document.getElementById(id); if (!el) return;
+    btn.textContent = el.classList.toggle('expanded') ? 'Show less' : 'Show more';
+  }
+
+  function updateStats(leads) {
+    const total     = leads.length;
+    const hot       = leads.filter(l => l.fit_score >= 8).length;
+    const contacted = leads.filter(l => l.status === 'contacted' || l.status === 'qualified').length;
+    const avg       = total ? (leads.reduce((s,l) => s + l.fit_score, 0) / total).toFixed(1) : '—';
+    const countries = new Set(leads.map(l => l.country)).size;
+    document.getElementById('s-total').textContent     = total;
+    document.getElementById('s-hot').textContent       = hot;
+    document.getElementById('s-contacted').textContent = contacted;
+    document.getElementById('s-avg').textContent       = avg;
+    document.getElementById('s-countries').textContent = countries;
+  }
+
+  async function updateStatus(leadId, sel) {
+    const newStatus = sel.value;
+    sel.className = 'status-select status-' + newStatus;
+    if (newStatus === 'contacted' || newStatus === 'qualified') {
+      const tr = sel.closest('tr');
+      tr.classList.remove('just-contacted'); void tr.offsetWidth;
+      tr.classList.add('just-contacted');
+      setTimeout(() => tr.classList.remove('just-contacted'), 1200);
+    }
+    const res = await fetch('/api/leads/' + leadId + '/status', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (!res.ok) { console.error('Status update failed', await res.text()); }
+    else {
+      let contacted = 0;
+      document.querySelectorAll('#leads-body tr').forEach(row => {
+        const s = row.querySelector('.status-select');
+        if (s && (s.value === 'contacted' || s.value === 'qualified')) contacted++;
+      });
+      document.getElementById('s-contacted').textContent = contacted;
+    }
+  }
+
+  // ── Semantic search ───────────────────────────────────────────────────
+  let searchTimer = null;
+
+  function onSearchInput() {
+    clearTimeout(searchTimer);
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) { clearSearch(); loadLeads(); return; }
+    searchTimer = setTimeout(() => runSearch(q), 400);
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-badge').classList.remove('visible');
+  }
+
+  async function runSearch(q) {
+    const score  = document.getElementById('score-filter').value;
+    const status = document.getElementById('status-filter').value;
+    const params = new URLSearchParams({ q, min_score: score, top_k: 50 });
+    if (currentGeo) params.set('geo', currentGeo);
+    if (status)     params.set('status', status);
+    document.getElementById('loading').style.display     = 'flex';
+    document.getElementById('empty').style.display       = 'none';
+    document.getElementById('leads-table').style.display = 'none';
+    document.getElementById('search-badge').classList.add('visible');
+    let leads;
+    try {
+      leads = await cachedFetch('/api/search?' + params);
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      const errEl = document.getElementById('error');
+      errEl.textContent = '⚠️ Search failed: ' + e.message;
+      errEl.style.display = 'block';
+      return;
+    }
+    document.getElementById('loading').style.display = 'none';
+    if (!leads.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
+    currentLeads = leads;
+    document.getElementById('leads-table').style.display = 'table';
+    renderSearchResults(leads); updateStats(leads);
+  }
+
+  function renderSearchResults(leads) {
+    const tbody = document.getElementById('leads-body');
+    tbody.innerHTML = '';
+    for (const lead of leads) {
+      const sim = lead.similarity_pct != null ? '<span class="similarity-pill">' + lead.similarity_pct + '% match</span>' : '';
+      const tr = document.createElement('tr');
+      tr.dataset.leadId = lead.id;
+      tr.innerHTML = `
+        <td>
+          <div class="company-cell">
+            ${logoCell(lead)}
+            <div class="company-info">
+              <div class="company-name"><a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a></div>
+              <div class="company-meta">
+                ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
+                ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
+                ${sim}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div>${flag(lead.country)} ${esc(lead.country)}</div>
+          <div class="company-meta" style="font-size:11px">${esc(lead.region)}</div>
+        </td>
+        <td>
+          <div class="collapsible-cell">
+            <div class="collapsible-text" id="desc-${lead.id}">${esc(lead.description || '—')}</div>
+            ${(lead.description || '').length > 120 ? `<button class="expand-btn" onclick="toggleExpand('desc-${lead.id}', this)">Show more</button>` : ''}
+          </div>
+        </td>
+        <td><div class="pain-cell">${painCell(lead)}</div></td>
+        <td><div class="pain-cell">${recCell(lead)}</div></td>
+        <td><div class="contacts">${contactTags(lead)}</div></td>
+        <td><span class="score score-${lead.fit_score}">${lead.fit_score}</span></td>
+        <td>
+          <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
+            <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
+            <option value="contacted"    ${lead.status==='contacted'    ? 'selected':''}>Contacted ✓</option>
+            <option value="qualified"    ${lead.status==='qualified'    ? 'selected':''}>Qualified ⭐</option>
+            <option value="disqualified" ${lead.status==='disqualified' ? 'selected':''}>Disqualified</option>
+          </select>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ── Export ───────────────────────────────────────────────────────────
+  function buildCSV(leads) {
+    const rows = [['Company','Website','Country','Region','Industry','Company Size','Description','TiDB Pain','TiDB Use Case','Recommendation','Fit Score','Status','ICP Contacts']];
+    for (const l of leads) {
+      const contacts = (l.contacts || []).map(c => (typeof c === 'object' ? c.role : c) || '').join('; ');
+      rows.push([l.company_name||'', l.website||'', l.country||'', l.region||'', l.industry||'', l.company_size||'', l.description||'', l.tidb_pain||'', l.tidb_use_case||'', l.outreach_recommendation||'', l.fit_score??'', l.status||'', contacts]);
+    }
+    return rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+  }
+
+  function csvFilename() {
+    const score = document.getElementById('score-filter').value;
+    let name = 'tidb-leads-score' + score + '+';
+    if (selectedCountries.size > 0) name += '-' + [...selectedCountries].join('-').toLowerCase().replace(/ /g,'-');
+    else name += '-' + currentGeo.toLowerCase();
+    return name + '.csv';
+  }
+
+  function downloadCSVBlob() {
+    const blob = new Blob([buildCSV(currentLeads)], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: csvFilename() });
+    a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportCSV() {
+    if (!currentLeads.length) return showToast('No leads to export.', 'warn');
+    downloadCSVBlob(); showToast('Downloaded ' + currentLeads.length + ' leads as CSV.');
+  }
+
+  function exportSheets() {
+    if (!currentLeads.length) return showToast('No leads to export.', 'warn');
+    downloadCSVBlob();
+    setTimeout(() => window.open('https://sheets.new', '_blank'), 300);
+    showToast('CSV downloaded — in the new Sheet: File → Import → Upload the file.', 'info', 6000);
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────
+  function showToast(msg, type = 'ok', duration = 3000) {
+    let t = document.getElementById('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'toast toast-' + type + ' toast-show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('toast-show'), duration);
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  const FLAGS = {
+    'United Kingdom':'🇬🇧','Ireland':'🇮🇪','France':'🇫🇷','Germany':'🇩🇪',
+    'Netherlands':'🇳🇱','Belgium':'🇧🇪','Luxembourg':'🇱🇺','Switzerland':'🇨🇭','Austria':'🇦🇹',
+    'Sweden':'🇸🇪','Norway':'🇳🇴','Denmark':'🇩🇰','Finland':'🇫🇮','Iceland':'🇮🇸',
+    'Estonia':'🇪🇪','Latvia':'🇱🇻','Lithuania':'🇱🇹',
+    'Spain':'🇪🇸','Portugal':'🇵🇹','Italy':'🇮🇹','Greece':'🇬🇷','Malta':'🇲🇹','Cyprus':'🇨🇾',
+    'Poland':'🇵🇱','Czech Republic':'🇨🇿','Hungary':'🇭🇺','Romania':'🇷🇴',
+    'Slovakia':'🇸🇰','Bulgaria':'🇧🇬','Croatia':'🇭🇷','Slovenia':'🇸🇮',
+    'Israel':'🇮🇱','United Arab Emirates':'🇦🇪','Saudi Arabia':'🇸🇦','Qatar':'🇶🇦',
+    'Bahrain':'🇧🇭','Kuwait':'🇰🇼','Jordan':'🇯🇴','Lebanon':'🇱🇧',
+    'South Africa':'🇿🇦','Nigeria':'🇳🇬','Kenya':'🇰🇪','Ghana':'🇬🇭',
+    'Egypt':'🇪🇬','Morocco':'🇲🇦','Tunisia':'🇹🇳',
+    'United States':'🇺🇸','Canada':'🇨🇦','Mexico':'🇲🇽',
+    'Brazil':'🇧🇷','Colombia':'🇨🇴','Argentina':'🇦🇷','Chile':'🇨🇱',
+    'Japan':'🇯🇵','South Korea':'🇰🇷','Taiwan':'🇹🇼','Hong Kong':'🇭🇰',
+    'Singapore':'🇸🇬','Vietnam':'🇻🇳','Thailand':'🇹🇭','Indonesia':'🇮🇩',
+    'Malaysia':'🇲🇾','Philippines':'🇵🇭','India':'🇮🇳','Sri Lanka':'🇱🇰',
+    'Australia':'🇦🇺','New Zealand':'🇳🇿',
+  };
+  function flag(country) { return FLAGS[country] || '🌍'; }
+</script></html>
