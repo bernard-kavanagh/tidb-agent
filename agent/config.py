@@ -14,7 +14,8 @@ MIN_FIT_SCORE = int(os.getenv("MIN_FIT_SCORE", "5"))
 # No per-country caps — discover and analyse everything we find
 COUNTRY_MAX_OVERRIDE: dict[str, int] = {}
 
-CLAUDE_MODEL = "claude-sonnet-4-6"
+CLAUDE_MODEL        = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL_STRONG = "claude-sonnet-4-6"
 
 # ---------------------------------------------------------------------------
 # Full geo → sub-region → country hierarchy
