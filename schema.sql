@@ -56,3 +56,5 @@ CREATE INDEX IF NOT EXISTS idx_leads_geo        ON leads(geo);
 -- Add embedding and outreach_recommendation columns (if upgrading):
 -- ALTER TABLE leads ADD COLUMN embedding              TEXT AFTER status;
 -- ALTER TABLE leads ADD COLUMN outreach_recommendation TEXT AFTER embedding;
+-- ALTER TABLE leads ADD COLUMN hq_country        VARCHAR(100) AFTER outreach_recommendation;
+-- ALTER TABLE leads ADD COLUMN discovery_country VARCHAR(100) AFTER hq_country;

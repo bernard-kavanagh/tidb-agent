@@ -80,8 +80,8 @@ def upsert_lead(
             INSERT INTO leads
                 (company_name, website, country, region, geo, industry, company_size,
                  description, tidb_pain, tidb_use_case, fit_score, source_url,
-                 embedding, outreach_recommendation, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                 embedding, outreach_recommendation, discovery_country, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON DUPLICATE KEY UPDATE
                 id                      = LAST_INSERT_ID(id),
                 website                 = VALUES(website),
@@ -96,6 +96,7 @@ def upsert_lead(
                 source_url              = VALUES(source_url),
                 embedding               = VALUES(embedding),
                 outreach_recommendation = VALUES(outreach_recommendation),
+                discovery_country       = VALUES(discovery_country),
                 updated_at              = NOW()
         """, (
             company_name, website, country, region, geo,
@@ -108,6 +109,7 @@ def upsert_lead(
             source_url,
             vec_str,
             analysis.get("outreach_recommendation"),
+            analysis.get("discovery_country"),
         ))
         lead_id = cur.lastrowid
 
