@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import csv
 import io
 import secrets
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -49,8 +49,25 @@ def _db():
     return get_conn()
 
 
+def log_access(conn, username: str, action: str, detail: str = "", ip_address: str = ""):
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO access_log (username, action, detail, ip_address) VALUES (%s, %s, %s, %s)",
+                (username, action, detail, ip_address),
+            )
+        conn.commit()
+    except Exception:
+        pass
+
+
 @app.get("/", response_class=HTMLResponse)
-async def index(auth=Depends(require_auth)):
+async def index(request: Request, auth=Depends(require_auth)):
+    conn = _db()
+    try:
+        log_access(conn, auth.username, "login", "", request.client.host)
+    finally:
+        conn.close()
     html = (static_dir / "index.html").read_text()
     return HTMLResponse(content=html)
 
@@ -73,6 +90,7 @@ async def api_summary(auth=Depends(require_auth)):
 
 @app.get("/api/leads")
 async def api_leads(
+    request: Request,
     auth=Depends(require_auth),
     geo: str | None = Query(None),
     country: str | None = Query(None),
@@ -82,6 +100,8 @@ async def api_leads(
 ):
     conn = _db()
     try:
+        detail = str(dict(request.query_params))
+        log_access(conn, auth.username, "view_leads", detail, request.client.host)
         leads = get_leads(conn, geo=geo, country=country, region=region,
                           min_score=min_score, status=status)
         import json as _json
@@ -101,6 +121,7 @@ async def api_leads(
 
 @app.get("/api/leads/export")
 async def api_export(
+    request: Request,
     auth=Depends(require_auth),
     geo: str | None = Query(None),
     country: str | None = Query(None),
@@ -110,6 +131,7 @@ async def api_export(
 ):
     conn = _db()
     try:
+        log_access(conn, auth.username, "export_csv", "", request.client.host)
         leads = get_leads(conn, geo=geo, country=country, region=region,
                           min_score=min_score, status=status)
     finally:
@@ -159,6 +181,7 @@ async def api_export(
 
 @app.get("/api/search")
 async def api_search(
+    request: Request,
     auth=Depends(require_auth),
     q: str = Query(..., min_length=2),
     top_k: int = Query(20, ge=1, le=100),
@@ -173,6 +196,7 @@ async def api_search(
     """
     conn = _db()
     try:
+        log_access(conn, auth.username, "search", q, request.client.host)
         results = hybrid_search(
             conn, query=q, top_k=top_k, min_score=min_score,
             geo=geo or None, country=country or None, region=region or None,
@@ -195,14 +219,35 @@ async def api_search(
 
 
 @app.patch("/api/leads/{lead_id}/status")
-async def api_update_status(lead_id: int, body: dict, auth=Depends(require_auth)):
+async def api_update_status(request: Request, lead_id: int, body: dict, auth=Depends(require_auth)):
     status = body.get("status")
     if status not in ("new", "contacted", "qualified", "disqualified"):
         raise HTTPException(status_code=400, detail="Invalid status")
     conn = _db()
     try:
+        log_access(conn, auth.username, "status_change", f"lead {lead_id} -> {status}", request.client.host)
         update_lead_status(conn, lead_id, status)
         conn.commit()
         return {"ok": True}
+    finally:
+        conn.close()
+
+
+@app.get("/api/access-log")
+async def api_access_log(auth=Depends(require_auth)):
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, username, action, detail, ip_address, created_at
+                FROM access_log
+                ORDER BY created_at DESC
+                LIMIT 200
+            """)
+            rows = cur.fetchall()
+        for row in rows:
+            if row.get("created_at"):
+                row["created_at"] = row["created_at"].isoformat()
+        return rows
     finally:
         conn.close()
