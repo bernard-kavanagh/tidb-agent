@@ -37,6 +37,7 @@ def require_auth(credentials: HTTPBasicCredentials = Depends(security)):
     if not ok:
         raise HTTPException(status_code=401, detail="Unauthorized",
                             headers={"WWW-Authenticate": "Basic"})
+    return credentials
 
 # Serve static files
 static_dir = Path(__file__).parent / "static"
