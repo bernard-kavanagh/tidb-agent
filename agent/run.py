@@ -35,6 +35,7 @@ def run_country(
     min_score: int,
     progress: Progress,
     task_id,
+    force_reanalyse: bool = False,
 ) -> tuple[int, int]:
     """
     Run the full pipeline for one country.
@@ -51,6 +52,15 @@ def run_country(
     processed = 0
     stored = 0
 
+    # Build set of already-analysed companies for this country (skip unless force_reanalyse)
+    existing_companies: set[str] = set()
+    if not force_reanalyse:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT company_name FROM leads WHERE country = %s", (country,))
+                existing_companies = {row[0].lower() for row in cur.fetchall()}
+        console.print(f"  [dim]{len(existing_companies)} existing leads in {country} — will skip[/dim]")
+
     progress.update(task_id, total=len(companies), completed=0,
                     description=f"[cyan]{country}[/cyan] — analysing {len(companies)} companies")
 
@@ -58,6 +68,11 @@ def run_country(
         name    = company.get("name", "").strip()
         website = company.get("website", "").strip()
         if not name or not website:
+            continue
+
+        if name.lower() in existing_companies:
+            progress.update(task_id, completed=i,
+                            description=f"[dim]{country}[/dim] — {name[:40]} (exists, skipping)")
             continue
 
         progress.update(task_id, completed=i,
@@ -108,6 +123,8 @@ def main():
     parser.add_argument("--region",    type=str, help="Run for a specific sub-region (e.g. 'Northern Europe')")
     parser.add_argument("--min-score", type=int, default=MIN_FIT_SCORE,
                         help="Minimum fit score to store a lead (default: %(default)s)")
+    parser.add_argument("--force-reanalyse", action="store_true",
+                        help="Re-analyse all companies even if they already exist in the database")
     args = parser.parse_args()
 
     if not ANTHROPIC_API_KEY:
@@ -176,7 +193,8 @@ def main():
 
         for i, country in enumerate(countries):
             progress.update(task, completed=int(i / len(countries) * 100))
-            processed, stored = run_country(country, client, args.min_score, progress, task)
+            processed, stored = run_country(country, client, args.min_score, progress, task,
+                                             force_reanalyse=args.force_reanalyse)
             total_processed += processed
             total_stored += stored
 
