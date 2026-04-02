@@ -36,7 +36,7 @@ state to reduce this tax. But TiDB Cloud goes further — the checkpoint data be
 - Unified economics: structured state + vector embeddings + real-time analytics in one engine means no ETL tax, no sync tax, no multi-system operational tax on top of the Token Tax savings.
 - The pitch: 'Other databases save you the Token Tax. TiDB eliminates it AND makes your agents smarter with every task.'
 
-TiDB Cloud's ICP has THREE distinct buying profiles. Score against all three:
+TiDB Cloud's ICP has FOUR distinct buying profiles. Score against all four:
 
 ━━ PROFILE 1 — DATABASE DISPLACEMENT ━━
 Companies on MySQL, Amazon Aurora, Microsoft SQL Server, Google Spanner, or DynamoDB
@@ -80,6 +80,24 @@ Companies building actual agent pipelines — not just AI products, but systems 
 These are the most urgent TiDB leads — they will hit the Memory Wall within 6-12 months of scaling,
 facing fragmented Postgres + vector DB + S3 stacks and paying the "Agentic Tax" in engineering overhead.
 
+━━ PROFILE 4 — REAL-TIME STREAMING & EVENT-DRIVEN AI ━━
+Companies processing high-velocity event streams where AI agents need to reason on live data — not yesterday's batch. This includes:
+- IoT platforms ingesting device telemetry (sensors, chargers, vehicles, industrial equipment) and running anomaly detection agents in real-time
+- Fraud detection systems that must score transactions in milliseconds while maintaining full audit trails
+- Real-time monitoring platforms (infrastructure, application performance, security) where AI agents triage alerts and correlate events
+- Event-driven architectures using Kafka, Flink, or similar streaming infrastructure where AI agents consume change streams
+- Any system where time-to-insight is measured in seconds not hours — and where ETL lag means missed anomalies or fraud
+
+TiDB's streaming value:
+- TiCDC (Change Data Capture): database changes stream to Kafka in real-time — agents consume live changefeeds instead of polling. Zero-lag event triggers.
+- HTAP on live data: anomaly detection queries run against the same table receiving writes — no ETL to a separate analytics warehouse. The agent sees the world as it is RIGHT NOW.
+- Context budgeting: instead of sending 50,000 tokens of raw event history to the LLM, load a 1,300-token context snapshot from TiDB. 97% token reduction on real-time agent workflows.
+- Graduated adoption: start on TiDB Serverless with polling mode, upgrade to Essentials/Dedicated for TiCDC + Kafka when production volumes demand it. Zero code changes — same schema, same queries, same agent logic.
+- Concurrent agent dispatch: multiple AI agents investigating different anomalies simultaneously against the same cluster. TiDB handles concurrent OLTP reads/writes without serialization bottlenecks.
+- Vector search on event signatures: embed anomaly patterns as vectors, then cosine-search against a catalog of known failure modes. Agents identify this looks like pattern X in milliseconds.
+
+Reference architecture: EV charger IoT platform — 20,000 devices streaming telemetry through Kafka to Flink to TiDB, with TiCDC triggering embedding and agent dispatch. Single cluster handles data plane (telemetry) and context plane (agent memory) simultaneously.
+
 Your job: analyse a company, identify which ICP profile(s) apply, and score fit precisely."""
 
 ANALYSIS_PROMPT = """Analyse this company as a potential TiDB Cloud customer across three ICP lenses.
@@ -97,15 +115,15 @@ Website content:
 Return ONLY valid JSON (no markdown, no explanation):
 {{
   "description": "2-3 sentence description of what the company does and their main product",
-  "icp_profile": "Which of the three profiles applies — one or more of: 'Database Displacement', 'EU AI Act Compliance', 'Agentic Workflow Builder', 'Episodic Memory Builder', 'MCP-Native'. Comma-separate if multiple apply.",
-  "db_stack": "Inferred or detected current database technology (e.g. 'MySQL + Pinecone', 'Aurora + OpenSearch', 'DynamoDB', 'MSSQL', 'Spanner', 'Postgres + pgvector', 'Unknown'). Look for clues in job postings, tech stack mentions, integrations listed on the site.",
-  "tidb_pain": "Specific pain point this company has that TiDB Cloud solves — be concrete and reference the correct ICP profile. Examples: DB Displacement: 'Running Aurora + Pinecone for their AI agents — paying the Memory Wall tax across two systems with ETL lag and sync complexity'; EU AI Act: 'Builds clinical decision-support AI under EU AI Act high-risk category — needs ACID audit trail for every agent decision and Right to be Forgotten across structured + vector data'; Agentic: 'Building a multi-agent research platform where each agent needs persistent memory; their current Postgres + vector DB split means stale context and hallucinations at scale'; Episodic Memory: 'Agents need to write decisions and outcomes back as vector embeddings so the system learns — requires a unified store for structured state and vector memory in one ACID engine'; MCP-Native: 'Building with Claude/LangChain tool-use patterns — TiDB native MCP Server lets agents query the full data substrate in natural language with no middleware'. Also assess the Token Tax exposure: does this company run multi-step agent workflows where context windows grow? Do they connect agents to multiple data sources? If so, position TiDB as both the Token Tax solution AND the episodic memory layer — checkpointing that compounds into intelligence.",
-  "tidb_use_case": "One concrete use case: how would they specifically use TiDB Cloud? Reference their actual product. E.g. 'Migrate their Aurora + Pinecone stack to TiDB Cloud Serverless — unified HTAP cluster stores agent session memory, product embeddings, and real-time usage analytics in one engine; serverless branching gives their DBA agent a safe sandbox for schema changes before prod merge; agent writes fix outcomes back as vector embeddings for episodic recall — the Decide-Validate-Remember loop closes in a single substrate'",
+  "icp_profile": "Which of the four profiles applies — one or more of: 'Database Displacement', 'EU AI Act Compliance', 'Agentic Workflow Builder', 'Episodic Memory Builder', 'MCP-Native', 'Real-Time Streaming'. Comma-separate if multiple apply.",
+  "db_stack": "Inferred or detected current database technology (e.g. 'MySQL + Pinecone', 'Aurora + OpenSearch', 'DynamoDB', 'MSSQL', 'Spanner', 'Postgres + pgvector', 'Kafka + Postgres + Elasticsearch', 'Flink + S3 + Redshift', 'TimescaleDB + Grafana', 'Unknown'). Look for clues in job postings, tech stack mentions, integrations listed on the site.",
+  "tidb_pain": "Specific pain point this company has that TiDB Cloud solves — be concrete and reference the correct ICP profile. Examples: DB Displacement: 'Running Aurora + Pinecone for their AI agents — paying the Memory Wall tax across two systems with ETL lag and sync complexity'; EU AI Act: 'Builds clinical decision-support AI under EU AI Act high-risk category — needs ACID audit trail for every agent decision and Right to be Forgotten across structured + vector data'; Agentic: 'Building a multi-agent research platform where each agent needs persistent memory; their current Postgres + vector DB split means stale context and hallucinations at scale'; Episodic Memory: 'Agents need to write decisions and outcomes back as vector embeddings so the system learns — requires a unified store for structured state and vector memory in one ACID engine'; MCP-Native: 'Building with Claude/LangChain tool-use patterns — TiDB native MCP Server lets agents query the full data substrate in natural language with no middleware'; Real-Time Streaming: 'Running Kafka + Flink + separate Postgres for writes + Elasticsearch for search + Redshift for analytics — five systems to process one event stream. TiCDC collapses this to Kafka + TiDB: writes, vector search, analytics, and agent memory in one cluster. Their fraud detection agents currently reason on 15-minute-old data because of ETL lag — TiDB HTAP gives them sub-second freshness'. Also assess the Token Tax exposure: does this company run multi-step agent workflows where context windows grow? Do they connect agents to multiple data sources? If so, position TiDB as both the Token Tax solution AND the episodic memory layer — checkpointing that compounds into intelligence.",
+  "tidb_use_case": "One concrete use case: how would they specifically use TiDB Cloud? Reference their actual product. E.g. 'Migrate their Aurora + Pinecone stack to TiDB Cloud Serverless — unified HTAP cluster stores agent session memory, product embeddings, and real-time usage analytics in one engine; serverless branching gives their DBA agent a safe sandbox for schema changes before prod merge; agent writes fix outcomes back as vector embeddings for episodic recall — the Decide-Validate-Remember loop closes in a single substrate'; For streaming companies: 'Stream transaction events via Kafka into TiDB, run real-time fraud scoring with HTAP queries on live data, embed transaction patterns as vectors for similarity search against known fraud signatures, and dispatch concurrent AI agents to investigate flagged transactions — all in one cluster. TiCDC triggers downstream enrichment pipelines without polling. Start on Serverless for development, upgrade to Essentials for TiCDC in production with zero code changes.'",
   "fit_score": <integer 1-10, where 10 = perfect ICP match>,
   "industry": "Industry category (e.g. 'AI Infrastructure', 'Healthcare AI', 'Legal AI', 'HR Tech', 'Fintech', 'Enterprise SaaS', 'Developer Tools', 'Agent Orchestration', 'E-commerce', etc.)",
   "company_size": "Estimated headcount band: '1-10', '11-50', '51-200', '201-500', '501-1000', or '1000+'. Use 'Unknown' if unclear.",
   "icp_contacts": ["Pick 3-5 from these GTM-aligned titles based on company profile — CTO, VP Engineering, Head of Data & AI, AI/ML Platform Lead, Chief Compliance Officer, Head of Backend Engineering, VP Product, Principal Engineer, Head of AI Infrastructure, Data Engineer Lead"],
-  "outreach_recommendation": "1-2 sentence actionable outreach angle. Lead with the specific TiDB value prop — name the MySQL/Aurora sharding pain, the real-time analytics gap, or the AI agent memory pattern. Be concrete and reference their actual stack. When the company runs multi-step agent workflows, lead with the Token Tax angle first (immediate cost savings they can calculate), then pivot to episodic memory (long-term compound intelligence). The Token Tax opens the door, episodic memory closes the deal.",
+  "outreach_recommendation": "1-2 sentence actionable outreach angle. Lead with the specific TiDB value prop — name the MySQL/Aurora sharding pain, the real-time analytics gap, or the AI agent memory pattern. Be concrete and reference their actual stack. When the company runs multi-step agent workflows, lead with the Token Tax angle first (immediate cost savings they can calculate), then pivot to episodic memory (long-term compound intelligence). The Token Tax opens the door, episodic memory closes the deal. For real-time or streaming companies, lead with the latency story: their agents are reasoning on stale data because of ETL lag. TiCDC + HTAP eliminates the lag. Then pivot to the Token Tax: their event-processing agents are re-reading full event histories instead of loading a compact context snapshot from TiDB. Quantify: a monitoring agent processing 50,000 events can load a 1,300-token context summary from TiDB instead of re-sending the full stream — 97% token reduction.",
   "hq_country": "The company headquarters country based on website content, about page, contact info, or any other signals. If the website clearly shows HQ is in a different country than the discovery country ({country}), return the CORRECT country. If unclear, return the discovery country."
 }}
 
@@ -118,6 +136,7 @@ Scoring guide — award the highest applicable score:
   • EU AI Act HIGH-RISK sector (healthcare/finance/HR/legal AI) with agentic or autonomous decision-making AND scale
   • Database Displacement: on Aurora/MySQL/DynamoDB/Spanner AND already using a second system for vectors or analytics — immediate migration candidate
   • MCP-Native: building with Claude/LangChain tool-use and needs a unified data substrate the agent can query directly
+  • Real-time streaming or event-driven AI: processing high-velocity event streams (IoT telemetry, fraud scoring, monitoring alerts) where agents must reason on live data with sub-second latency — TiCDC plus HTAP eliminates the ETL lag that causes missed anomalies
 
 7-8 STRONG FIT (any one of):
   • Building AI agents or copilots but not yet at Memory Wall scale — will hit it within 12 months
@@ -126,11 +145,14 @@ Scoring guide — award the highest applicable score:
   • MySQL/Aurora/MSSQL shop with clear AI roadmap and growing data complexity
   • Multi-tenant SaaS platform needing per-tenant database isolation at scale (thousands of ephemeral contexts)
   • AI-native product where the database functions as the system of thought, not just storage
+  • Event-driven architecture with AI on the roadmap — using Kafka or Flink or CDC patterns but agents still query batch-processed data not live streams
+  • Fraud detection or transaction scoring at scale — needs real-time ACID consistency plus analytics on the same dataset
 
 5-6 MODERATE FIT:
   • Data-heavy tech company with AI on the roadmap but not yet building agents
   • Using a modern database but with architectural signals (separate warehouse, vector addon) suggesting future fragmentation
   • Compliance-aware company in a regulated sector not yet building AI agents
+  • Monitoring or observability company with batch analytics — not yet real-time but architectural signals suggest future streaming needs
 
 3-4 WEAK FIT:
   • Traditional tech company, limited data complexity, no AI signals
