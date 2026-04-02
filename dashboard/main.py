@@ -17,7 +17,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from agent.config import TIDB_CONNECTION_STRING, GEO_REGIONS
+from agent.config import TIDB_CONNECTION_STRING, GEO_REGIONS, ANTHROPIC_API_KEY
 from agent.storage import get_conn, get_leads, get_countries_summary, update_lead_status
 from agent.embeddings import hybrid_search
 from agent.case_matcher import match_case_studies
@@ -232,6 +232,89 @@ async def api_update_status(request: Request, lead_id: int, body: dict, auth=Dep
         return {"ok": True}
     finally:
         conn.close()
+
+
+@app.post("/api/lookup")
+async def api_lookup(request: Request, body: dict, auth=Depends(require_auth)):
+    import re
+    import anthropic as _anthropic
+    from agent.scraper import scrape_text
+    from agent.analyzer import analyse_company
+    from agent.storage import upsert_lead
+
+    url = (body.get("url") or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    geo = (body.get("geo") or "EMEA").upper()
+    if geo not in ("EMEA", "NAMERICA", "APAC"):
+        geo = "EMEA"
+
+    # Extract domain: strip scheme, www., path
+    domain = re.sub(r'^https?://', '', url.lower())
+    domain = re.sub(r'^www\.', '', domain)
+    domain = domain.split('/')[0].split('?')[0].split('#')[0]
+
+    conn = _db()
+    try:
+        log_access(conn, auth.username, "lookup", url, request.client.host)
+
+        # Step 1: check database
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM leads WHERE website LIKE %s LIMIT 1",
+                (f"%{domain}%",),
+            )
+            row = cur.fetchone()
+
+        if row:
+            if row.get("created_at"):
+                row["created_at"] = row["created_at"].isoformat()
+            row.pop("embedding", None)
+            return {"source": "database", "lead": row}
+    finally:
+        conn.close()
+
+    # Step 2: scrape & analyse
+    try:
+        client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        scraped = scrape_text(url)
+        analysis = analyse_company(
+            client,
+            company_name=domain,
+            website=url,
+            content=scraped,
+            geo=geo,
+        )
+        if not analysis or (analysis.get("fit_score") or 0) < 1:
+            return {"source": "error", "message": "Could not analyse this URL"}
+
+        conn2 = _db()
+        try:
+            lead_id = upsert_lead(
+                conn2,
+                company_name=analysis.get("company_name") or domain,
+                website=url,
+                country=analysis.get("hq_country") or "Manual Entry",
+                region="Manual",
+                geo=geo,
+                analysis=analysis,
+                source_url=url,
+            )
+            conn2.commit()
+            with conn2.cursor() as cur:
+                cur.execute("SELECT * FROM leads WHERE id = %s", (lead_id,))
+                lead = cur.fetchone()
+            if lead:
+                if lead.get("created_at"):
+                    lead["created_at"] = lead["created_at"].isoformat()
+                lead.pop("embedding", None)
+                return {"source": "analysed", "lead": lead}
+            return {"source": "analysed", "lead": {**analysis, "website": url}}
+        finally:
+            conn2.close()
+    except Exception as e:
+        return {"source": "error", "message": f"Could not analyse this URL: {e}"}
 
 
 @app.get("/api/access-log")

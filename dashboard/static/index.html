@@ -537,6 +537,61 @@
     .country-cb, .select-all-cb { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
     .sidebar-item.region-header { cursor: default; }
     .sidebar-item.region-header:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── Add Lead button ────────────────────────────────────────────── */
+    .add-lead-btn { border-color: #16a34a !important; color: #22c55e !important; }
+    .add-lead-btn:hover { background: rgba(34,197,94,0.1) !important; border-color: #22c55e !important; }
+
+    /* ── Add Lead modal ─────────────────────────────────────────────── */
+    #add-lead-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    #add-lead-overlay.open { display: flex; }
+    #add-lead-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px 28px 24px; width: 520px; max-width: 94vw; position: relative;
+    }
+    #add-lead-modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+    #add-lead-modal .modal-close {
+      position: absolute; top: 16px; right: 18px; background: none; border: none;
+      color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    #add-lead-modal .modal-close:hover { color: var(--text); }
+    .al-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .al-row input, .al-row select {
+      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit;
+    }
+    .al-row input:focus, .al-row select:focus { outline: none; border-color: var(--accent); }
+    .al-row select { flex: 0 0 110px; }
+    #al-lookup-btn {
+      width: 100%; padding: 9px; border-radius: 6px; border: none;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #al-lookup-btn:hover { background: var(--accent2); }
+    #al-lookup-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #al-result { margin-top: 16px; }
+    .al-banner {
+      padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .al-banner.green { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .al-banner.blue  { background: rgba(91,106,245,0.12); color: #8b96f8; border: 1px solid rgba(91,106,245,0.3); }
+    .al-banner.red   { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .al-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-size: 13px; }
+    .al-card .al-company { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .al-card .al-row2 { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 8px; }
+    .al-card .al-kv { color: var(--muted); }
+    .al-card .al-kv span { color: var(--text); }
+    .al-card .al-score { font-size: 14px; font-weight: 700; }
+    .al-card .al-score.hot  { color: var(--hot); }
+    .al-card .al-score.warm { color: var(--warm); }
+    .al-card .al-score.cool { color: var(--cool); }
+    .al-card .al-text { margin-top: 8px; color: var(--muted); line-height: 1.5; }
+    .al-card .al-text span { color: var(--text); }
+    .al-spinner { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 12px 0; }
   </style>
 </head>
 <body>
@@ -609,6 +664,7 @@
       <button class="export-btn" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
       <button class="export-btn sheets" onclick="exportSheets()" title="Open in Google Sheets">📊 Sheets</button>
       <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
+      <button class="export-btn add-lead-btn" onclick="openAddLead()" title="Add lead by URL">+ Add Lead</button>
     </div>
   </div>
 
@@ -1175,4 +1231,96 @@
     'Australia':'🇦🇺','New Zealand':'🇳🇿',
   };
   function flag(country) { return FLAGS[country] || '🌍'; }
-</script></html>
+
+  // ── Add Lead modal ────────────────────────────────────────────────────
+  function openAddLead() {
+    document.getElementById('add-lead-overlay').classList.add('open');
+    document.getElementById('al-url').focus();
+  }
+  function closeAddLead() {
+    document.getElementById('add-lead-overlay').classList.remove('open');
+    document.getElementById('al-result').innerHTML = '';
+    document.getElementById('al-url').value = '';
+  }
+  document.getElementById('add-lead-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeAddLead();
+  });
+
+  async function doLookup() {
+    const url = document.getElementById('al-url').value.trim();
+    const geo = document.getElementById('al-geo').value;
+    const resultEl = document.getElementById('al-result');
+    const btn = document.getElementById('al-lookup-btn');
+    if (!url) return;
+
+    btn.disabled = true;
+    resultEl.innerHTML = '<div class="al-spinner"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Analysing…</div>';
+
+    try {
+      const resp = await fetch('/api/lookup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, geo }),
+      });
+      const data = await resp.json();
+
+      if (data.source === 'error') {
+        resultEl.innerHTML = `<div class="al-banner red">${data.message || 'Could not analyse this URL'}</div>`;
+        return;
+      }
+
+      const lead = data.lead || {};
+      const pain  = lead.tidb_pain  || lead.pain  || '';
+      const uc    = lead.tidb_use_case || lead.use_case || '';
+      const score = lead.fit_score || 0;
+      const scoreClass = score >= 8 ? 'hot' : score >= 5 ? 'warm' : 'cool';
+
+      let banner, bannerNote = '';
+      if (data.source === 'database') {
+        banner = '<div class="al-banner green">Found in database</div>';
+      } else {
+        banner = '<div class="al-banner blue">New lead added</div>';
+        refreshData();
+      }
+
+      resultEl.innerHTML = banner + `
+        <div class="al-card">
+          <div class="al-company">${lead.company_name || url}</div>
+          <div class="al-row2">
+            <span class="al-kv">Website: <span><a href="${lead.website||url}" target="_blank" style="color:var(--accent)">${lead.website||url}</a></span></span>
+            <span class="al-kv">Country: <span>${lead.country || '—'}</span></span>
+            <span class="al-kv">Industry: <span>${lead.industry || '—'}</span></span>
+            <span class="al-kv">Score: <span class="al-score ${scoreClass}">${score}/10</span></span>
+          </div>
+          ${pain ? `<div class="al-text"><strong>Pain:</strong> <span>${pain}</span></div>` : ''}
+          ${uc   ? `<div class="al-text"><strong>Use case:</strong> <span>${uc}</span></div>` : ''}
+          ${lead.outreach_recommendation ? `<div class="al-text"><strong>Outreach:</strong> <span>${lead.outreach_recommendation}</span></div>` : ''}
+        </div>`;
+    } catch(e) {
+      resultEl.innerHTML = '<div class="al-banner red">Request failed. Please try again.</div>';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+
+<!-- ── Add Lead modal ───────────────────────────────────────────────── -->
+<div id="add-lead-overlay">
+  <div id="add-lead-modal">
+    <button class="modal-close" onclick="closeAddLead()">✕</button>
+    <h3>Add Lead by URL</h3>
+    <div class="al-row">
+      <input id="al-url" type="url" placeholder="https://example.com"
+             onkeydown="if(event.key==='Enter') doLookup()">
+      <select id="al-geo">
+        <option value="EMEA">EMEA</option>
+        <option value="NAMERICA">NAMERICA</option>
+        <option value="APAC">APAC</option>
+      </select>
+    </div>
+    <button id="al-lookup-btn" onclick="doLookup()">Lookup</button>
+    <div id="al-result"></div>
+  </div>
+</div>
+</html>
