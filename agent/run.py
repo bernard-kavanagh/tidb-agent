@@ -58,7 +58,7 @@ def run_country(
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT company_name FROM leads WHERE country = %s", (country,))
-                existing_companies = {row[0].lower() for row in cur.fetchall()}
+                existing_companies = {row['company_name'].lower() for row in cur.fetchall()}
         console.print(f"  [dim]{len(existing_companies)} existing leads in {country} — will skip[/dim]")
 
     progress.update(task_id, total=len(companies), completed=0,
