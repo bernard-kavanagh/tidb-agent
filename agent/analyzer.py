@@ -46,6 +46,12 @@ who are now hitting AI-related limits:
 - Spanner users locked into GCP proprietary APIs who want cloud-agnostic MySQL compatibility
 - MSSQL shops migrating to cloud-native AI and needing a MySQL-compatible drop-in
 - Any team stitching SQL + vector + analytics across 2+ systems — the "Memory Wall"
+- Elasticsearch/OpenSearch users needing unified search + transactions (currently managing separate write DB + search index)
+- Milvus users who need relational joins alongside vector search
+- Cassandra/ScyllaDB shops that need ACID transactions + vector search but are fighting eventual consistency
+- MongoDB users scaling beyond document model into relational + analytical + vector workloads
+- Any company mentioning 'data warehouse', 'data lake', 'OLTP + OLAP', or 'unified analytics' — signals architectural awareness that TiDB's HTAP directly addresses
+- ANTI-SIGNAL: if a company mentions they use Aurora Serverless for BOTH transactional and analytical workloads, they may have already consolidated. Downweight by 1-2 tiers unless they also show vector search fragmentation.
 
 ━━ PROFILE 2 — AI COMPLIANCE ━━
 Companies operating in REGULATED SECTORS where AI decisions must be auditable — regardless
@@ -59,6 +65,7 @@ trading, lending, insurance), HR/Recruitment AI (CV screening, hiring decisions)
 NAMERICA-specific signals: any healthcare AI handling PHI = HIPAA; any US fintech = SOC2 + CCPA;
 any platform storing personal data of California residents = CCPA Right to Deletion.
 APAC-specific signals: any company with Singapore/India/Australia data = PDPA/DPDP/APPs.
+Additional detection signals: look for AML (anti-money laundering), KYC (know your customer), transaction monitoring — strong fintech compliance signals. Look for 'audit trail', 'data lineage', 'compliance dashboard' on the website — signals they're building compliance into their product. If the company explicitly builds compliance tooling, they understand the pain and are a warm lead for TiDB's ACID audit story.
 TiDB's compliance value: ACID transaction log = provable audit trail for every agent decision;
 serverless branching = human-in-the-loop approval gate before AI changes reach production;
 Right to be Forgotten / Right to Erasure = single SQL command across structured + vector data.
@@ -77,6 +84,9 @@ Companies building actual agent pipelines — not just AI products, but systems 
 - MCP-NATIVE COMPANIES: teams building with Claude, LangChain, or similar frameworks using MCP tool-use
   patterns — TiDB's native MCP Server lets agents query the full data substrate in natural language,
   making these companies an immediate integration fit.
+- Workflow/orchestration signals: Temporal, n8n, Zapier, BullMQ — these bridge agent-like workflows even if not explicitly 'AI agents'.
+- Detection phrases: 'RAG', 'retrieval-augmented generation', 'reasoning engine', 'decision automation', 'stateful workflows'.
+- For Episodic Memory sub-profile, look for: 'feedback loop', 'learning from outcomes', 'continuous improvement', 'experiment tracking', 'observation database' — signals they're building learning systems.
 These are the most urgent TiDB leads — they will hit the Memory Wall within 6-12 months of scaling,
 facing fragmented Postgres + vector DB + S3 stacks and paying the "Agentic Tax" in engineering overhead.
 
@@ -85,8 +95,11 @@ Companies processing high-velocity event streams where AI agents need to reason 
 - IoT platforms ingesting device telemetry (sensors, chargers, vehicles, industrial equipment) and running anomaly detection agents in real-time
 - Fraud detection systems that must score transactions in milliseconds while maintaining full audit trails
 - Real-time monitoring platforms (infrastructure, application performance, security) where AI agents triage alerts and correlate events
-- Event-driven architectures using Kafka, Flink, or similar streaming infrastructure where AI agents consume change streams
+- Event-driven architectures using Kafka, Flink, Spark Streaming, or similar streaming infrastructure where AI agents consume change streams
+- IoT platforms using MQTT for device communication — a strong IoT protocol signal
 - Any system where time-to-insight is measured in seconds not hours — and where ETL lag means missed anomalies or fraud
+- Detection phrases: 'sub-second latency', 'time-series database', 'sensor fusion', 'live dashboard', 'reactive architecture'
+- TimescaleDB and InfluxDB users — time-series databases that lack vector search — displacement opportunities as they add AI capabilities
 
 TiDB's streaming value:
 - TiCDC (Change Data Capture): database changes stream to Kafka in real-time — agents consume live changefeeds instead of polling. Zero-lag event triggers.
@@ -97,6 +110,12 @@ TiDB's streaming value:
 - Vector search on event signatures: embed anomaly patterns as vectors, then cosine-search against a catalog of known failure modes. Agents identify this looks like pattern X in milliseconds.
 
 Reference architecture: EV charger IoT platform — 20,000 devices streaming telemetry through Kafka to Flink to TiDB, with TiCDC triggering embedding and agent dispatch. Single cluster handles data plane (telemetry) and context plane (agent memory) simultaneously.
+
+━━ CROSS-PROFILE DETECTION NOTES ━━
+
+HTAP-SPECIFIC LANGUAGE: If a company explicitly uses the terms 'HTAP', 'real-time analytics', 'operational analytics', or 'hybrid transactional analytical' on their website, they are pre-warmed to TiDB positioning. Push the score UP 1-2 tiers from whatever the base profile match would be.
+
+TIDB/PINGCAP SELF-MENTIONS: If the company mentions TiDB or PingCAP by name on their website, flag this in the icp_profile field as 'Existing TiDB User or Evaluator'. This could mean they're an active customer (disqualifying for outreach) or actively evaluating (highest-intent lead). The outreach_recommendation should note this.
 
 Your job: analyse a company, identify which ICP profile(s) apply, and score fit precisely."""
 
@@ -116,8 +135,8 @@ Return ONLY valid JSON (no markdown, no explanation):
 {{
   "description": "2-3 sentence description of what the company does and their main product",
   "icp_profile": "Which of the four profiles applies — one or more of: 'Database Displacement', 'EU AI Act Compliance', 'Agentic Workflow Builder', 'Episodic Memory Builder', 'MCP-Native', 'Real-Time Streaming'. Comma-separate if multiple apply.",
-  "db_stack": "Inferred or detected current database technology (e.g. 'MySQL + Pinecone', 'Aurora + OpenSearch', 'DynamoDB', 'MSSQL', 'Spanner', 'Postgres + pgvector', 'Kafka + Postgres + Elasticsearch', 'Flink + S3 + Redshift', 'TimescaleDB + Grafana', 'Unknown'). Look for clues in job postings, tech stack mentions, integrations listed on the site.",
-  "tidb_pain": "Specific pain point this company has that TiDB Cloud solves — be concrete and reference the correct ICP profile. Examples: DB Displacement: 'Running Aurora + Pinecone for their AI agents — paying the Memory Wall tax across two systems with ETL lag and sync complexity'; EU AI Act: 'Builds clinical decision-support AI under EU AI Act high-risk category — needs ACID audit trail for every agent decision and Right to be Forgotten across structured + vector data'; Agentic: 'Building a multi-agent research platform where each agent needs persistent memory; their current Postgres + vector DB split means stale context and hallucinations at scale'; Episodic Memory: 'Agents need to write decisions and outcomes back as vector embeddings so the system learns — requires a unified store for structured state and vector memory in one ACID engine'; MCP-Native: 'Building with Claude/LangChain tool-use patterns — TiDB native MCP Server lets agents query the full data substrate in natural language with no middleware'; Real-Time Streaming: 'Running Kafka + Flink + separate Postgres for writes + Elasticsearch for search + Redshift for analytics — five systems to process one event stream. TiCDC collapses this to Kafka + TiDB: writes, vector search, analytics, and agent memory in one cluster. Their fraud detection agents currently reason on 15-minute-old data because of ETL lag — TiDB HTAP gives them sub-second freshness'. Also assess the Token Tax exposure: does this company run multi-step agent workflows where context windows grow? Do they connect agents to multiple data sources? If so, position TiDB as both the Token Tax solution AND the episodic memory layer — checkpointing that compounds into intelligence.",
+  "db_stack": "Inferred or detected current database technology (e.g. 'MySQL + Pinecone', 'Aurora + OpenSearch', 'DynamoDB', 'MSSQL', 'Spanner', 'Postgres + pgvector', 'Kafka + Postgres + Elasticsearch', 'Flink + S3 + Redshift', 'TimescaleDB + Grafana', 'Elasticsearch + Postgres', 'MongoDB + Pinecone', 'Cassandra + custom search', 'InfluxDB + Postgres', 'Temporal + Postgres + Redis', 'Unknown'). Look for clues in job postings, tech stack mentions, integrations listed on the site.",
+  "tidb_pain": "Specific pain point this company has that TiDB Cloud solves — be concrete and reference the correct ICP profile. Examples: DB Displacement: 'Running Aurora + Pinecone for their AI agents — paying the Memory Wall tax across two systems with ETL lag and sync complexity'; EU AI Act: 'Builds clinical decision-support AI under EU AI Act high-risk category — needs ACID audit trail for every agent decision and Right to be Forgotten across structured + vector data'; Agentic: 'Building a multi-agent research platform where each agent needs persistent memory; their current Postgres + vector DB split means stale context and hallucinations at scale'; Episodic Memory: 'Agents need to write decisions and outcomes back as vector embeddings so the system learns — requires a unified store for structured state and vector memory in one ACID engine'; MCP-Native: 'Building with Claude/LangChain tool-use patterns — TiDB native MCP Server lets agents query the full data substrate in natural language with no middleware'; Real-Time Streaming: 'Running Kafka + Flink + separate Postgres for writes + Elasticsearch for search + Redshift for analytics — five systems to process one event stream. TiCDC collapses this to Kafka + TiDB: writes, vector search, analytics, and agent memory in one cluster. Their fraud detection agents currently reason on 15-minute-old data because of ETL lag — TiDB HTAP gives them sub-second freshness'. Also assess the Token Tax exposure: does this company run multi-step agent workflows where context windows grow? Do they connect agents to multiple data sources? If so, position TiDB as both the Token Tax solution AND the episodic memory layer — checkpointing that compounds into intelligence. Look for integration breadth signals: companies connecting to Salesforce API, GitHub API, Datadog, or multiple SaaS tools create wide context requirements for agents. Also detect: 'context window', 'retrieval-augmented', 'multi-step reasoning' as explicit Token Tax indicators on AI product pages.",
   "tidb_use_case": "One concrete use case: how would they specifically use TiDB Cloud? Reference their actual product. E.g. 'Migrate their Aurora + Pinecone stack to TiDB Cloud Serverless — unified HTAP cluster stores agent session memory, product embeddings, and real-time usage analytics in one engine; serverless branching gives their DBA agent a safe sandbox for schema changes before prod merge; agent writes fix outcomes back as vector embeddings for episodic recall — the Decide-Validate-Remember loop closes in a single substrate'; For streaming companies: 'Stream transaction events via Kafka into TiDB, run real-time fraud scoring with HTAP queries on live data, embed transaction patterns as vectors for similarity search against known fraud signatures, and dispatch concurrent AI agents to investigate flagged transactions — all in one cluster. TiCDC triggers downstream enrichment pipelines without polling. Start on Serverless for development, upgrade to Essentials for TiCDC in production with zero code changes.'",
   "fit_score": <integer 1-10, where 10 = perfect ICP match>,
   "industry": "Industry category (e.g. 'AI Infrastructure', 'Healthcare AI', 'Legal AI', 'HR Tech', 'Fintech', 'Enterprise SaaS', 'Developer Tools', 'Agent Orchestration', 'E-commerce', etc.)",
@@ -147,12 +166,16 @@ Scoring guide — award the highest applicable score:
   • AI-native product where the database functions as the system of thought, not just storage
   • Event-driven architecture with AI on the roadmap — using Kafka or Flink or CDC patterns but agents still query batch-processed data not live streams
   • Fraud detection or transaction scoring at scale — needs real-time ACID consistency plus analytics on the same dataset
+  • Company explicitly uses HTAP, real-time analytics, or operational analytics language — pre-warmed to TiDB positioning even without explicit agent architecture
+  • Companies using Temporal, n8n, or similar orchestration platforms for complex workflows — not explicitly AI agents yet but architectural precursors
 
 5-6 MODERATE FIT:
   • Data-heavy tech company with AI on the roadmap but not yet building agents
   • Using a modern database but with architectural signals (separate warehouse, vector addon) suggesting future fragmentation
   • Compliance-aware company in a regulated sector not yet building AI agents
   • Monitoring or observability company with batch analytics — not yet real-time but architectural signals suggest future streaming needs
+  • Companies using Elasticsearch alongside a primary database — signals search+transaction split that HTAP could consolidate
+  • Time-series database users (TimescaleDB, InfluxDB) who may need vector search or relational joins as they add AI capabilities
 
 3-4 WEAK FIT:
   • Traditional tech company, limited data complexity, no AI signals
@@ -160,6 +183,12 @@ Scoring guide — award the highest applicable score:
 
 1-2 POOR FIT:
   • Non-technical company, pure services business, or no data infrastructure whatsoever
+
+ANTI-SIGNALS that should REDUCE score by 1-2 tiers:
+- Company already uses a single consolidated platform (e.g. Aurora Serverless for both OLTP + analytics) with no vector search needs
+- Company is purely a consulting/services business with no proprietary data infrastructure
+- Company mentions TiDB as an existing technology in their stack (flag as existing customer, not a new lead)
+- Company website is a landing page with no substantive product or tech content (insufficient signal to score accurately — default to 5)
 
 ICP contacts: 3-5 titles from this GTM-aligned list based on the company's profile:
   Agentic/Technical leads: CTO, VP Engineering, Head of Data & AI, AI/ML Platform Lead, Principal Engineer, Head of AI Infrastructure, Data Engineer Lead
