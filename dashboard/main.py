@@ -198,10 +198,33 @@ async def api_search(
     conn = _db()
     try:
         log_access(conn, auth.username, "search", q, request.client.host)
-        results = hybrid_search(
+
+        # Keyword matches on company_name / website
+        kw = f"%{q}%"
+        kw_filters = ["(company_name LIKE %s OR website LIKE %s)", "fit_score >= %s"]
+        kw_params: list = [kw, kw, min_score]
+        if geo:     kw_filters.append("geo = %s");     kw_params.append(geo)
+        if country: kw_filters.append("country = %s"); kw_params.append(country)
+        if region:  kw_filters.append("region = %s");  kw_params.append(region)
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT * FROM leads WHERE {' AND '.join(kw_filters)} LIMIT %s",
+                kw_params + [top_k],
+            )
+            keyword_rows = cur.fetchall() or []
+        for r in keyword_rows:
+            r["similarity_pct"] = 100
+        keyword_ids = {r["id"] for r in keyword_rows}
+
+        # Vector search
+        vector_results = hybrid_search(
             conn, query=q, top_k=top_k, min_score=min_score,
             geo=geo or None, country=country or None, region=region or None,
         )
+
+        # Merge: keyword first, then vector (deduplicated)
+        results = list(keyword_rows) + [r for r in vector_results if r["id"] not in keyword_ids]
+
         import json as _json
         for lead in results:
             if lead.get("created_at"):

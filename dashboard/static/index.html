@@ -550,14 +550,24 @@
     #add-lead-overlay.open { display: flex; }
     #add-lead-modal {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 28px 28px 24px; width: 520px; max-width: 94vw; position: relative;
+      width: 520px; max-width: 94vw; position: relative;
+      display: flex; flex-direction: column; max-height: 85vh; overflow: hidden;
     }
-    #add-lead-modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+    .al-modal-sticky {
+      padding: 22px 24px 16px; flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .al-modal-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+    }
+    #add-lead-modal h3 { font-size: 15px; font-weight: 600; margin: 0; }
     #add-lead-modal .modal-close {
-      position: absolute; top: 16px; right: 18px; background: none; border: none;
-      color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+      background: none; border: none; color: var(--muted); font-size: 18px;
+      cursor: pointer; line-height: 1; flex-shrink: 0; padding: 2px 4px;
     }
     #add-lead-modal .modal-close:hover { color: var(--text); }
+    .al-banner-area { margin-top: 12px; }
+    .al-banner-area:empty { margin-top: 0; }
     .al-row { display: flex; gap: 10px; margin-bottom: 12px; }
     .al-row input, .al-row select {
       flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -572,7 +582,7 @@
     }
     #al-lookup-btn:hover { background: var(--accent2); }
     #al-lookup-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    #al-result { margin-top: 16px; }
+    #al-result { overflow-y: auto; flex: 1; padding: 16px 24px 20px; }
     .al-banner {
       padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;
       margin-bottom: 12px;
@@ -592,6 +602,11 @@
     .al-card .al-text { margin-top: 8px; color: var(--muted); line-height: 1.5; }
     .al-card .al-text span { color: var(--text); }
     .al-spinner { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 12px 0; }
+    .name-match-pill {
+      display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 6px;
+      border-radius: 10px; background: rgba(34,197,94,0.12); color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.3); margin-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1071,10 +1086,48 @@
   // ── Semantic search ───────────────────────────────────────────────────
   let searchTimer = null;
 
+  function looksLikeCompanyOrUrl(q) {
+    if (q.includes('http') || q.includes('.')) return true;
+    return q.trim().split(/\s+/).length < 4;
+  }
+
+  function clientSideMatch(q) {
+    const lower = q.toLowerCase();
+    return currentLeads
+      .filter(l =>
+        (l.company_name || '').toLowerCase().includes(lower) ||
+        (l.website || '').toLowerCase().includes(lower)
+      )
+      .map(l => ({ ...l, _nameMatch: true }));
+  }
+
+  function mergeSearchResults(nameMatches, vectorResults) {
+    const seen = new Set(nameMatches.map(l => l.id));
+    const deduped = (vectorResults || []).filter(l => !seen.has(l.id));
+    return [...nameMatches, ...deduped];
+  }
+
+  function showMergedResults(merged) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('search-badge').classList.add('visible');
+    if (!merged.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
+    currentLeads = merged;
+    document.getElementById('leads-table').style.display = 'table';
+    renderSearchResults(merged); updateStats(merged);
+  }
+
   function onSearchInput() {
     clearTimeout(searchTimer);
     const q = document.getElementById('search-input').value.trim();
     if (!q) { clearSearch(); loadLeads(); return; }
+
+    // Immediate client-side match for company names / URLs
+    if (looksLikeCompanyOrUrl(q)) {
+      const nameMatches = clientSideMatch(q);
+      if (nameMatches.length > 0) showMergedResults(mergeSearchResults(nameMatches, []));
+    }
+
     searchTimer = setTimeout(() => runSearch(q), 400);
   }
 
@@ -1103,18 +1156,19 @@
       errEl.style.display = 'block';
       return;
     }
-    document.getElementById('loading').style.display = 'none';
-    if (!leads.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
-    currentLeads = leads;
-    document.getElementById('leads-table').style.display = 'table';
-    renderSearchResults(leads); updateStats(leads);
+    // Merge: client-side name matches first, then vector results
+    const nameMatches = looksLikeCompanyOrUrl(q) ? clientSideMatch(q) : [];
+    const merged = mergeSearchResults(nameMatches, leads);
+    showMergedResults(merged);
   }
 
   function renderSearchResults(leads) {
     const tbody = document.getElementById('leads-body');
     tbody.innerHTML = '';
     for (const lead of leads) {
-      const sim = lead.similarity_pct != null ? '<span class="similarity-pill">' + lead.similarity_pct + '% match</span>' : '';
+      const sim = lead._nameMatch
+        ? '<span class="name-match-pill">Name match</span>'
+        : (lead.similarity_pct != null ? '<span class="similarity-pill">' + lead.similarity_pct + '% match</span>' : '');
       const tr = document.createElement('tr');
       tr.dataset.leadId = lead.id;
       tr.innerHTML = `
@@ -1240,6 +1294,7 @@
   function closeAddLead() {
     document.getElementById('add-lead-overlay').classList.remove('open');
     document.getElementById('al-result').innerHTML = '';
+    document.getElementById('al-banner-area').innerHTML = '';
     document.getElementById('al-url').value = '';
   }
   document.getElementById('add-lead-overlay').addEventListener('click', function(e) {
@@ -1253,7 +1308,9 @@
     const btn = document.getElementById('al-lookup-btn');
     if (!url) return;
 
+    const bannerEl = document.getElementById('al-banner-area');
     btn.disabled = true;
+    bannerEl.innerHTML = '';
     resultEl.innerHTML = '<div class="al-spinner"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Analysing…</div>';
 
     try {
@@ -1266,7 +1323,8 @@
       const data = await resp.json();
 
       if (data.source === 'error') {
-        resultEl.innerHTML = `<div class="al-banner red">${data.message || 'Could not analyse this URL'}</div>`;
+        resultEl.innerHTML = '';
+        bannerEl.innerHTML = `<div class="al-banner red">${data.message || 'Could not analyse this URL'}</div>`;
         return;
       }
 
@@ -1276,15 +1334,14 @@
       const score = lead.fit_score || 0;
       const scoreClass = score >= 8 ? 'hot' : score >= 5 ? 'warm' : 'cool';
 
-      let banner, bannerNote = '';
       if (data.source === 'database') {
-        banner = '<div class="al-banner green">Found in database</div>';
+        bannerEl.innerHTML = '<div class="al-banner green">Found in database</div>';
       } else {
-        banner = '<div class="al-banner blue">New lead added</div>';
+        bannerEl.innerHTML = '<div class="al-banner blue">New lead added</div>';
         refreshData();
       }
 
-      resultEl.innerHTML = banner + `
+      resultEl.innerHTML = `
         <div class="al-card">
           <div class="al-company">${lead.company_name || url}</div>
           <div class="al-row2">
@@ -1298,7 +1355,8 @@
           ${lead.outreach_recommendation ? `<div class="al-text"><strong>Outreach:</strong> <span>${lead.outreach_recommendation}</span></div>` : ''}
         </div>`;
     } catch(e) {
-      resultEl.innerHTML = '<div class="al-banner red">Request failed. Please try again.</div>';
+      resultEl.innerHTML = '';
+      bannerEl.innerHTML = '<div class="al-banner red">Request failed. Please try again.</div>';
     } finally {
       btn.disabled = false;
     }
@@ -1308,18 +1366,23 @@
 <!-- ── Add Lead modal ───────────────────────────────────────────────── -->
 <div id="add-lead-overlay">
   <div id="add-lead-modal">
-    <button class="modal-close" onclick="closeAddLead()">✕</button>
-    <h3>Add Lead by URL</h3>
-    <div class="al-row">
-      <input id="al-url" type="url" placeholder="https://example.com"
-             onkeydown="if(event.key==='Enter') doLookup()">
-      <select id="al-geo">
-        <option value="EMEA">EMEA</option>
-        <option value="NAMERICA">NAMERICA</option>
-        <option value="APAC">APAC</option>
-      </select>
+    <div class="al-modal-sticky">
+      <div class="al-modal-header">
+        <h3>Add Lead by URL</h3>
+        <button class="modal-close" onclick="closeAddLead()">✕</button>
+      </div>
+      <div class="al-row">
+        <input id="al-url" type="url" placeholder="https://example.com"
+               onkeydown="if(event.key==='Enter') doLookup()">
+        <select id="al-geo">
+          <option value="EMEA">EMEA</option>
+          <option value="NAMERICA">NAMERICA</option>
+          <option value="APAC">APAC</option>
+        </select>
+      </div>
+      <button id="al-lookup-btn" onclick="doLookup()">Lookup</button>
+      <div class="al-banner-area" id="al-banner-area"></div>
     </div>
-    <button id="al-lookup-btn" onclick="doLookup()">Lookup</button>
     <div id="al-result"></div>
   </div>
 </div>
