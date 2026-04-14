@@ -340,6 +340,121 @@ async def api_lookup(request: Request, body: dict, auth=Depends(require_auth)):
         return {"source": "error", "message": f"Could not analyse this URL: {e}"}
 
 
+
+
+# ── User Lists (My Targets) ───────────────────────────────────────────────
+
+@app.post("/api/lists/add")
+async def api_lists_add(request: Request, body: dict, auth=Depends(require_auth)):
+    import json as _json
+    lead_id  = body.get("lead_id")
+    username = (body.get("username") or "").strip()
+    notes    = body.get("notes") or None
+    if not lead_id or not username:
+        raise HTTPException(status_code=400, detail="lead_id and username are required")
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO user_lists (username, lead_id, notes)
+                   VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE notes = VALUES(notes)""",
+                (username, lead_id, notes),
+            )
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/lists/remove")
+async def api_lists_remove(request: Request, body: dict, auth=Depends(require_auth)):
+    lead_id  = body.get("lead_id")
+    username = (body.get("username") or "").strip()
+    if not lead_id or not username:
+        raise HTTPException(status_code=400, detail="lead_id and username are required")
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM user_lists WHERE username = %s AND lead_id = %s",
+                (username, lead_id),
+            )
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@app.get("/api/lists/users")
+async def api_lists_users(auth=Depends(require_auth)):
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT username FROM user_lists ORDER BY username")
+            rows = cur.fetchall() or []
+        return [r["username"] for r in rows]
+    finally:
+        conn.close()
+
+
+@app.get("/api/lists")
+async def api_lists_get(
+    request: Request,
+    auth=Depends(require_auth),
+    username: str = Query(...),
+):
+    import json as _json
+    if not username.strip():
+        raise HTTPException(status_code=400, detail="username is required")
+    conn = _db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    l.id, l.company_name, l.website, l.country, l.region, l.geo,
+                    l.industry, l.company_size, l.description, l.tidb_pain, l.tidb_use_case,
+                    l.fit_score, l.status, l.created_at, l.embedding, l.outreach_recommendation,
+                    ul.notes, ul.added_at,
+                    COALESCE(JSON_ARRAYAGG(c.role), JSON_ARRAY()) AS contact_roles,
+                    COALESCE(JSON_ARRAYAGG(c.linkedin_url), JSON_ARRAY()) AS contact_links
+                FROM user_lists ul
+                JOIN leads l ON l.id = ul.lead_id
+                LEFT JOIN contacts c ON c.lead_id = l.id
+                WHERE ul.username = %s
+                GROUP BY l.id, ul.notes, ul.added_at
+                ORDER BY ul.added_at DESC
+            """, (username.strip(),))
+            rows = cur.fetchall() or []
+        result = []
+        for row in rows:
+            row = dict(row)
+            if row.get("created_at"):
+                row["created_at"] = row["created_at"].isoformat()
+            if row.get("added_at"):
+                row["added_at"] = row["added_at"].isoformat()
+            emb   = row.pop("embedding", None)
+            roles = row.pop("contact_roles", None)
+            links = row.pop("contact_links", None)
+            if isinstance(roles, str): roles = _json.loads(roles)
+            if isinstance(links, str): links = _json.loads(links)
+            roles = [r for r in (roles or []) if r is not None]
+            links = links or []
+            row["contacts"] = [
+                {"role": r, "linkedin_url": links[i] if i < len(links) else None}
+                for i, r in enumerate(roles)
+            ]
+            try:
+                emb_vec = _json.loads(emb) if isinstance(emb, str) else emb
+                row["matched_case_studies"] = match_case_studies(emb_vec) if emb_vec else []
+            except Exception:
+                row["matched_case_studies"] = []
+            result.append(row)
+        return result
+    finally:
+        conn.close()
+
+
 @app.get("/api/access-log")
 async def api_access_log(auth=Depends(require_auth)):
     conn = _db()

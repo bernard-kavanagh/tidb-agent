@@ -531,7 +531,8 @@
     table th:nth-child(5), table td:nth-child(5) { min-width: 200px; max-width: 300px; }
     table th:nth-child(6), table td:nth-child(6) { max-width: 180px; }
     table th:nth-child(7), table td:nth-child(7) { width: 60px; }
-    table th:nth-child(8), table td:nth-child(8) { width: 100px; }
+    table th:nth-child(8), table td:nth-child(8) { width: 38px; text-align: center; padding: 2px 0; }
+    table th:nth-child(9), table td:nth-child(9) { width: 100px; }
 
     /* ── Sidebar checkboxes ─────────────────────────────────────────── */
     .country-cb, .select-all-cb { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
@@ -607,6 +608,105 @@
       border-radius: 10px; background: rgba(34,197,94,0.12); color: #22c55e;
       border: 1px solid rgba(34,197,94,0.3); margin-left: 4px;
     }
+
+    /* ── Star / My Targets ─────────────────────────────────────────── */
+    .star-btn {
+      background: none; border: none; cursor: pointer; font-size: 16px;
+      padding: 2px 4px; opacity: 0.3; transition: opacity 0.15s, transform 0.1s; line-height: 1;
+    }
+    .star-btn:hover { opacity: 0.8; transform: scale(1.15); }
+    .star-btn.starred { opacity: 1; }
+    .targets-btn {
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
+      border: 1px solid var(--warm); background: rgba(245,158,11,0.1);
+      color: var(--warm); cursor: pointer; transition: background 0.1s; white-space: nowrap;
+    }
+    .targets-btn:hover { background: rgba(245,158,11,0.2); }
+    .targets-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      background: var(--warm); color: #000; border-radius: 8px;
+      padding: 1px 5px; margin-left: 4px; vertical-align: middle;
+    }
+    .targets-badge.hidden { display: none; }
+    .username-pill {
+      font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); cursor: pointer; transition: background 0.1s; white-space: nowrap;
+    }
+    .username-pill:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    #username-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    #username-overlay.open { display: flex; }
+    #username-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      width: 380px; max-width: 94vw; padding: 28px 28px 22px; text-align: center;
+    }
+    #username-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    #username-modal p { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+    #username-input {
+      width: 100%; padding: 9px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 14px; font-family: inherit;
+      margin-bottom: 14px; box-sizing: border-box;
+    }
+    #username-input:focus { outline: none; border-color: var(--accent); }
+    .un-btn-row { display: flex; gap: 8px; }
+    .un-save-btn {
+      flex: 1; padding: 9px; border-radius: 6px; border: none;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .un-save-btn:hover { background: var(--accent2); }
+    .un-skip-btn {
+      padding: 9px 14px; border-radius: 6px; border: 1px solid var(--border);
+      background: none; color: var(--muted); font-size: 13px; cursor: pointer;
+    }
+    .un-skip-btn:hover { color: var(--text); }
+    #lists-view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    #lists-view.visible { display: flex; }
+    .lists-header {
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .lists-header h3 { font-size: 15px; font-weight: 600; flex: 1; }
+    .lists-header select {
+      font-size: 12px; padding: 5px 8px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    }
+    .lists-stats {
+      display: flex; gap: 16px; padding: 10px 24px;
+      border-bottom: 1px solid var(--border); background: rgba(245,158,11,0.03); flex-shrink: 0;
+    }
+    .lists-stat { display: flex; flex-direction: column; align-items: center; }
+    .lists-stat-val { font-size: 18px; font-weight: 700; color: var(--warm); }
+    .lists-stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    #lists-table-wrap { flex: 1; overflow-y: auto; padding-bottom: 24px; }
+    .notes-input {
+      font-size: 11px; padding: 3px 6px; border-radius: 5px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: inherit; width: 160px;
+      resize: none; height: 38px; vertical-align: top;
+    }
+    .notes-input:focus { outline: none; border-color: var(--accent); }
+    .remove-list-btn {
+      font-size: 11px; padding: 3px 8px; border-radius: 5px;
+      border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.07);
+      color: var(--red); cursor: pointer; white-space: nowrap;
+    }
+    .remove-list-btn:hover { background: rgba(239,68,68,0.15); }
+    .lists-export-btn {
+      font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); cursor: pointer; white-space: nowrap;
+    }
+    .lists-export-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--accent); }
+    .sort-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 10px; padding: 0 2px; vertical-align: middle;
+    }
+    .sort-btn.active { color: var(--warm); }
   </style>
 </head>
 <body>
@@ -680,6 +780,8 @@
       <button class="export-btn sheets" onclick="exportSheets()" title="Open in Google Sheets">📊 Sheets</button>
       <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
       <button class="export-btn add-lead-btn" onclick="openAddLead()" title="Add lead by URL">+ Add Lead</button>
+      <button class="targets-btn" id="targets-btn" onclick="showListsView()">⭐ My Targets<span class="targets-badge hidden" id="targets-badge">0</span></button>
+      <button class="username-pill" id="username-pill" onclick="openUsernameModal()">👤 Set name</button>
     </div>
   </div>
 
@@ -723,12 +825,56 @@
           <th>Recommendation</th>
           <th>ICP Contacts</th>
           <th>Score</th>
+          <th></th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody id="leads-body"></tbody>
     </table>
   </div>
+  <!-- ── My Targets view ───────────────────────────────────────────────── -->
+  <div id="lists-view">
+    <div class="lists-header">
+      <h3>⭐ My Targets</h3>
+      <select id="lists-user-select" onchange="renderListsView()">
+        <option value="">Loading…</option>
+      </select>
+      <button class="lists-export-btn" onclick="exportListsCSV()">&#8659; CSV</button>
+      <button class="export-btn" onclick="hideListsView()" style="margin-left:4px">&#10005; Close</button>
+    </div>
+    <div class="lists-stats" id="lists-stats-bar">
+      <div class="lists-stat">
+        <span class="lists-stat-val" id="ls-total">—</span>
+        <span class="lists-stat-label">Targets</span>
+      </div>
+      <div class="lists-stat">
+        <span class="lists-stat-val" id="ls-hot">—</span>
+        <span class="lists-stat-label">Hot (8-10)</span>
+      </div>
+      <div class="lists-stat">
+        <span class="lists-stat-val" id="ls-avg">—</span>
+        <span class="lists-stat-label">Avg score</span>
+      </div>
+    </div>
+    <div id="lists-table-wrap">
+      <table id="lists-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Country</th>
+            <th>TiDB Pain / Use Case</th>
+            <th>Score <button class="sort-btn" id="sort-score-btn" onclick="cycleListsSort('score')">▼</button></th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th>Added <button class="sort-btn" id="sort-date-btn" onclick="cycleListsSort('date')">▼</button></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="lists-body"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -760,6 +906,8 @@
       cachedFetch(BASE_PATH + '/api/summary'),
     ]);
     buildSidebar();
+    renderUsernamePill();
+    loadUserList();
     await loadLeads();
   });
 
@@ -895,6 +1043,7 @@
 
   // ── Leads loader ─────────────────────────────────────────────────────
   async function loadLeads() {
+    if (listsMode) hideListsView();
     const score  = document.getElementById('score-filter').value;
     const status = document.getElementById('status-filter').value;
     const params = new URLSearchParams({ min_score: score });
@@ -974,6 +1123,7 @@
         </td>
       `;
       tbody.appendChild(tr);
+      insertStarCell(tr, lead);
     }
   }
 
@@ -1209,6 +1359,7 @@
         </td>
       `;
       tbody.appendChild(tr);
+      insertStarCell(tr, lead);
     }
   }
 
@@ -1361,6 +1512,259 @@
       btn.disabled = false;
     }
   }
+  // ── My Targets: state + cookie helpers ──────────────────────────────────
+  let listsMode    = false;
+  let myTargetIds  = new Set();
+  let listsLeads   = [];
+  let listsSortKey = 'date';
+  let listsSortDir = -1;
+
+  function getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? decodeURIComponent(m[2]) : '';
+  }
+  function setCookie(name, val, days) {
+    const exp = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(val) + ';expires=' + exp + ';path=/';
+  }
+  function getUsername() { return getCookie('listUsername'); }
+  function renderUsernamePill() {
+    const u = getUsername();
+    const btn = document.getElementById('username-pill');
+    if (!btn) return;
+    btn.textContent = u ? ('\u{1F464} ' + u) : '\u{1F464} Set name';
+  }
+  function openUsernameModal() {
+    const ov = document.getElementById('username-overlay');
+    if (!ov) return;
+    document.getElementById('username-input').value = getUsername();
+    ov.classList.add('open');
+    setTimeout(function() { document.getElementById('username-input').focus(); }, 50);
+  }
+  function closeUsernameModal() {
+    const ov = document.getElementById('username-overlay');
+    if (ov) ov.classList.remove('open');
+  }
+  function saveUsername() {
+    const val = (document.getElementById('username-input').value || '').trim();
+    if (!val) return;
+    setCookie('listUsername', val, 365);
+    closeUsernameModal(); renderUsernamePill(); loadUserList();
+    showToast('Saved as ' + val);
+  }
+  function skipUsernameModal() { setCookie('listUsername', '_skip', 365); closeUsernameModal(); }
+
+  async function loadUserList() {
+    const u = getUsername();
+    if (!u || u === '_skip') { myTargetIds = new Set(); updateStarButtons(); updateTargetsBadge(); return; }
+    try {
+      const data = await fetch(BASE_PATH + '/api/lists?username=' + encodeURIComponent(u)).then(function(r){return r.json();});
+      if (Array.isArray(data)) { myTargetIds = new Set(data.map(function(l){return l.id;})); listsLeads = data; }
+    } catch(e) { console.warn('loadUserList error', e); }
+    updateStarButtons(); updateTargetsBadge();
+    try {
+      const users = await fetch(BASE_PATH + '/api/lists/users').then(function(r){return r.json();});
+      const sel = document.getElementById('lists-user-select');
+      if (sel) {
+        sel.innerHTML = '';
+        users.forEach(function(usr) {
+          const opt = document.createElement('option'); opt.value = usr; opt.textContent = usr;
+          if (usr === u) opt.selected = true; sel.appendChild(opt);
+        });
+        if (!users.includes(u) && u && u !== '_skip') {
+          const opt = document.createElement('option'); opt.value = u; opt.textContent = u; opt.selected = true; sel.appendChild(opt);
+        }
+      }
+    } catch(e) {}
+  }
+  function updateStarButtons() {
+    document.querySelectorAll('.star-btn').forEach(function(btn) {
+      const id = parseInt(btn.dataset.leadId);
+      btn.classList.toggle('starred', myTargetIds.has(id));
+      btn.title = myTargetIds.has(id) ? 'Remove from My Targets' : 'Add to My Targets';
+    });
+  }
+  function updateTargetsBadge() {
+    const badge = document.getElementById('targets-badge');
+    if (!badge) return;
+    const n = myTargetIds.size;
+    badge.textContent = n; badge.classList.toggle('hidden', n === 0);
+  }
+  function insertStarCell(tr, lead) {
+    const td = document.createElement('td');
+    td.style.cssText = 'text-align:center;padding:2px 0;vertical-align:middle';
+    const btn = document.createElement('button');
+    btn.className = 'star-btn' + (myTargetIds.has(lead.id) ? ' starred' : '');
+    btn.dataset.leadId = lead.id;
+    btn.title = myTargetIds.has(lead.id) ? 'Remove from My Targets' : 'Add to My Targets';
+    btn.textContent = '\u2b50';
+    btn.onclick = function() { starBtnClick(lead); };
+    td.appendChild(btn);
+    const tds = tr.querySelectorAll('td');
+    tr.insertBefore(td, tds[tds.length - 1]);
+  }
+  async function starBtnClick(lead) {
+    const u = getUsername();
+    if (!u || u === '_skip') { openUsernameModal(); return; }
+    await toggleStar(lead, u);
+  }
+  async function toggleStar(lead, u) {
+    const isStarred = myTargetIds.has(lead.id);
+    if (isStarred) {
+      await fetch(BASE_PATH + '/api/lists/remove', {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:lead.id,username:u})});
+      myTargetIds.delete(lead.id); listsLeads = listsLeads.filter(function(l){return l.id!==lead.id;});
+      showToast('Removed from My Targets');
+    } else {
+      await fetch(BASE_PATH + '/api/lists/add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:lead.id,username:u})});
+      myTargetIds.add(lead.id); listsLeads.push(lead);
+      showToast('Added to My Targets');
+    }
+    updateStarButtons(); updateTargetsBadge();
+    if (listsMode) renderListsView();
+  }
+
+  async function showListsView() {
+    const u = getUsername();
+    if (!u || u === '_skip') { openUsernameModal(); return; }
+    listsMode = true;
+    document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('stats-bar').style.display = 'none';
+    document.getElementById('lists-view').classList.add('visible');
+    try {
+      const data = await fetch(BASE_PATH + '/api/lists?username=' + encodeURIComponent(u)).then(function(r){return r.json();});
+      if (Array.isArray(data)) { listsLeads = data; myTargetIds = new Set(data.map(function(l){return l.id;})); }
+    } catch(e) {}
+    renderListsView(); updateTargetsBadge();
+  }
+  function hideListsView() {
+    listsMode = false;
+    const lv = document.getElementById('lists-view');
+    if (lv) lv.classList.remove('visible');
+    document.getElementById('table-wrap').style.display = '';
+    document.getElementById('stats-bar').style.display = '';
+  }
+  function renderListsView() {
+    const sel = document.getElementById('lists-user-select');
+    const viewUser = sel ? sel.value : getUsername();
+    if (viewUser && viewUser !== getUsername()) {
+      fetch(BASE_PATH + '/api/lists?username=' + encodeURIComponent(viewUser))
+        .then(function(r){return r.json();})
+        .then(function(data){if(Array.isArray(data)) renderListsTable(data, true);});
+      return;
+    }
+    renderListsTable(listsLeads, false);
+  }
+  function cycleListsSort(key) {
+    if (listsSortKey === key) { listsSortDir *= -1; }
+    else { listsSortKey = key; listsSortDir = -1; }
+    document.getElementById('sort-score-btn').classList.toggle('active', listsSortKey === 'score');
+    document.getElementById('sort-date-btn').classList.toggle('active', listsSortKey === 'date');
+    renderListsView();
+  }
+  function sortedListLeads(leads) {
+    return leads.slice().sort(function(a, b) {
+      if (listsSortKey === 'score') return listsSortDir * ((b.fit_score||0) - (a.fit_score||0));
+      const da = a.added_at || a.created_at || '';
+      const db = b.added_at || b.created_at || '';
+      return listsSortDir * (da < db ? -1 : da > db ? 1 : 0);
+    });
+  }
+
+  function renderListsTable(leads, readOnly) {
+    updateListsStats(leads);
+    const tbody = document.getElementById('lists-body');
+    tbody.innerHTML = '';
+    const sorted = sortedListLeads(leads);
+    for (let i = 0; i < sorted.length; i++) {
+      const lead = sorted[i];
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td');
+      const nameA = document.createElement('a');
+      nameA.href = lead.website || '#'; nameA.target = '_blank'; nameA.rel = 'noopener';
+      nameA.style.cssText = 'color:var(--text);font-weight:600;text-decoration:none';
+      nameA.textContent = lead.company_name || '—';
+      td1.appendChild(nameA);
+      const metaDiv = document.createElement('div'); metaDiv.className = 'company-meta';
+      if (lead.industry) {
+        const ip = document.createElement('span'); ip.className = 'industry-pill';
+        ip.textContent = lead.industry; metaDiv.appendChild(ip);
+      }
+      td1.appendChild(metaDiv); tr.appendChild(td1);
+      const td2 = document.createElement('td');
+      td2.innerHTML = flag(lead.country) + ' ' + esc(lead.country || '');
+      const regDiv = document.createElement('div'); regDiv.className = 'company-meta';
+      regDiv.style.fontSize = '11px'; regDiv.textContent = lead.region || '';
+      td2.appendChild(regDiv); tr.appendChild(td2);
+      const td3 = document.createElement('td');
+      td3.innerHTML = '<div class="pain-cell">' + painCell(lead) + '</div>';
+      tr.appendChild(td3);
+      const td4 = document.createElement('td');
+      const scoreSpan = document.createElement('span');
+      scoreSpan.className = 'score score-' + lead.fit_score; scoreSpan.textContent = lead.fit_score;
+      td4.appendChild(scoreSpan); tr.appendChild(td4);
+      const td5 = document.createElement('td');
+      const statusSel = document.createElement('select'); statusSel.className = 'status-select status-' + lead.status;
+      [['new','New'],['contacted','Contacted ✓'],['qualified','Qualified ⭐'],['disqualified','Disqualified']].forEach(function(sv) {
+        const opt = document.createElement('option'); opt.value = sv[0]; opt.textContent = sv[1];
+        if (lead.status === sv[0]) opt.selected = true; statusSel.appendChild(opt);
+      });
+      (function(lid,sel2){sel2.onchange=function(){updateStatus(lid,sel2);};})(lead.id, statusSel);
+      td5.appendChild(statusSel); tr.appendChild(td5);
+      const td6 = document.createElement('td');
+      if (!readOnly) {
+        const ta = document.createElement('textarea'); ta.className = 'notes-input';
+        ta.placeholder = 'Add notes…'; ta.value = lead.notes || '';
+        (function(lid,t){t.onblur=function(){saveNotes(lid,t.value);};})(lead.id, ta);
+        td6.appendChild(ta);
+      } else { td6.style.color='var(--muted)'; td6.style.fontSize='12px'; td6.textContent=lead.notes||''; }
+      tr.appendChild(td6);
+      const td7 = document.createElement('td'); td7.style.cssText='font-size:11px;color:var(--muted)';
+      td7.textContent = (lead.added_at || lead.created_at || '').slice(0, 10);
+      tr.appendChild(td7);
+      const td8 = document.createElement('td');
+      if (!readOnly) {
+        const rmBtn = document.createElement('button'); rmBtn.className = 'remove-list-btn'; rmBtn.textContent = 'Remove';
+        (function(lid){rmBtn.onclick=function(){removeFromList(lid);};})(lead.id);
+        td8.appendChild(rmBtn);
+      }
+      tr.appendChild(td8); tbody.appendChild(tr);
+    }
+  }
+  function updateListsStats(leads) {
+    document.getElementById('ls-total').textContent = leads.length;
+    document.getElementById('ls-hot').textContent = leads.filter(function(l){return l.fit_score>=8;}).length;
+    const avg = leads.length ? (leads.reduce(function(s,l){return s+(l.fit_score||0);},0)/leads.length).toFixed(1) : '—';
+    document.getElementById('ls-avg').textContent = avg;
+  }
+  async function saveNotes(leadId, notes) {
+    const u = getUsername(); if (!u || u === '_skip') return;
+    await fetch(BASE_PATH + '/api/lists/add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:leadId,username:u,notes:notes})});
+    const lead = listsLeads.find(function(l){return l.id===leadId;}); if (lead) lead.notes = notes;
+  }
+  async function removeFromList(leadId) {
+    const u = getUsername(); if (!u || u === '_skip') return;
+    await fetch(BASE_PATH + '/api/lists/remove', {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:leadId,username:u})});
+    myTargetIds.delete(leadId); listsLeads = listsLeads.filter(function(l){return l.id!==leadId;});
+    updateStarButtons(); updateTargetsBadge(); renderListsView();
+    showToast('Removed from My Targets');
+  }
+  function exportListsCSV() {
+    if (!listsLeads.length) return showToast('No targets to export.', 'warn');
+    const rows = [['Company','Website','Country','Region','Industry','TiDB Pain','TiDB Use Case','Score','Status','Notes','Added']];
+    listsLeads.forEach(function(l){
+      rows.push([l.company_name||'',l.website||'',l.country||'',l.region||'',l.industry||'',l.tidb_pain||'',l.tidb_use_case||'',l.fit_score||'',l.status||'',l.notes||'',(l.added_at||'').slice(0,10)]);
+    });
+    const csv = rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'),{href:url,download:'my-targets.csv'});
+    a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    showToast('Downloaded ' + listsLeads.length + ' targets as CSV.');
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!getCookie('listUsername')) setTimeout(openUsernameModal, 800);
+  });
+
 </script>
 
 <!-- ── Add Lead modal ───────────────────────────────────────────────── -->
@@ -1384,6 +1788,20 @@
       <div class="al-banner-area" id="al-banner-area"></div>
     </div>
     <div id="al-result"></div>
+  </div>
+</div>
+
+<!-- ── Username modal ──────────────────────────────────────────────── -->
+<div id="username-overlay">
+  <div id="username-modal">
+    <h3>Who are you?</h3>
+    <p>Set your name to save leads to My Targets and track your pipeline.</p>
+    <input id="username-input" type="text" placeholder="Your name or email"
+           onkeydown="if(event.key==='Enter') saveUsername()">
+    <div class="un-btn-row">
+      <button class="un-save-btn" onclick="saveUsername()">Save</button>
+      <button class="un-skip-btn" onclick="skipUsernameModal()">Skip</button>
+    </div>
   </div>
 </div>
 </html>

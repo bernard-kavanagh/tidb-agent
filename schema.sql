@@ -58,3 +58,15 @@ CREATE INDEX IF NOT EXISTS idx_leads_geo        ON leads(geo);
 -- ALTER TABLE leads ADD COLUMN outreach_recommendation TEXT AFTER embedding;
 -- ALTER TABLE leads ADD COLUMN hq_country        VARCHAR(100) AFTER outreach_recommendation;
 -- ALTER TABLE leads ADD COLUMN discovery_country VARCHAR(100) AFTER hq_country;
+
+-- ── My Targets (user lists) ──────────────────────────────────────────────
+-- CREATE TABLE IF NOT EXISTS user_lists (
+--     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+--     username VARCHAR(200) NOT NULL,
+--     lead_id INT NOT NULL,
+--     added_at DATETIME DEFAULT NOW(),
+--     notes TEXT,
+--     UNIQUE KEY unique_user_lead (username, lead_id),
+--     CONSTRAINT fk_user_lists_lead FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
+-- );
+-- CREATE INDEX idx_user_lists_username ON user_lists(username);
