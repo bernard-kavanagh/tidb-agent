@@ -1117,8 +1117,8 @@
     if (!lead.website) return `<div class="company-logo-placeholder">${esc(lead.company_name[0] || '?')}</div>`;
     const domain  = getDomain(lead.website);
     const initial = esc(lead.company_name[0] || '?');
-    return `<img class="company-logo" src="https://logo.clearbit.com/${domain}" alt=""
-      onerror="this.outerHTML='<div class=\\'company-logo-placeholder\\'>${initial}</div>'" />`;
+    return `<img class="company-logo" src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt=""
+      onerror="this.onerror=null;this.outerHTML='<div class=\\'company-logo-placeholder\\'>${initial}</div>'" />`;
   }
 
   function painCell(lead) {
