@@ -1,4 +1,8 @@
-# See requirements-vercel.txt (Vercel) or requirements-ec2.txt (EC2/local)
-# Install the one you need:
-#   pip install -r requirements-ec2.txt    # local development
-#   pip install -r requirements-vercel.txt # Vercel deployment
+PyMySQL>=1.1.0
+certifi>=2024.0.0
+fastapi>=0.110.0
+python-dotenv>=1.0.0
+httpx>=0.26.0
+authlib>=1.3.0
+itsdangerous>=2.1.0
+anthropic>=0.40.0
