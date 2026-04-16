@@ -255,7 +255,7 @@
     tr:hover td { background: rgba(255,255,255,0.025); }
 
     /* Company cell */
-    .company-cell { display: flex; align-items: flex-start; gap: 10px; }
+    .company-cell { display: flex; align-items: center; gap: 10px; }
     .company-logo {
       width: 32px;
       height: 32px;
@@ -626,11 +626,11 @@
 
     /* ── Star / My Targets ─────────────────────────────────────────── */
     .star-btn {
-      background: none; border: none; cursor: pointer; font-size: 16px;
-      padding: 2px 4px; opacity: 0.3; transition: opacity 0.15s, transform 0.1s; line-height: 1;
+      background: none; border: none; cursor: pointer; font-size: 18px;
+      padding: 0; color: var(--muted); transition: color 0.15s, transform 0.1s; line-height: 1; flex-shrink: 0;
     }
-    .star-btn:hover { opacity: 0.8; transform: scale(1.15); }
-    .star-btn.starred { opacity: 1; }
+    .star-btn:hover { transform: scale(1.15); }
+    .star-btn.starred { color: #f59e0b; }
     .targets-btn {
       font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
       border: 1px solid var(--warm); background: rgba(245,158,11,0.1);
@@ -1782,8 +1782,10 @@
   function updateStarButtons() {
     document.querySelectorAll('.star-btn').forEach(function(btn) {
       const id = parseInt(btn.dataset.leadId);
-      btn.classList.toggle('starred', myTargetIds.has(id));
-      btn.title = myTargetIds.has(id) ? 'Remove from My Targets' : 'Add to My Targets';
+      const starred = myTargetIds.has(id);
+      btn.classList.toggle('starred', starred);
+      btn.textContent = starred ? '\u2605' : '\u2606';
+      btn.title = starred ? 'Remove from My Targets' : 'Add to My Targets';
     });
   }
   function updateTargetsBadge() {
@@ -1793,17 +1795,15 @@
     badge.textContent = n; badge.classList.toggle('hidden', n === 0);
   }
   function insertStarCell(tr, lead) {
-    const td = document.createElement('td');
-    td.style.cssText = 'text-align:center;padding:2px 0;vertical-align:middle';
     const btn = document.createElement('button');
-    btn.className = 'star-btn' + (myTargetIds.has(lead.id) ? ' starred' : '');
+    const starred = myTargetIds.has(lead.id);
+    btn.className = 'star-btn' + (starred ? ' starred' : '');
     btn.dataset.leadId = lead.id;
-    btn.title = myTargetIds.has(lead.id) ? 'Remove from My Targets' : 'Add to My Targets';
-    btn.textContent = '\u2b50';
+    btn.title = starred ? 'Remove from My Targets' : 'Add to My Targets';
+    btn.textContent = starred ? '\u2605' : '\u2606';
     btn.onclick = function() { starBtnClick(lead); };
-    td.appendChild(btn);
-    const tds = tr.querySelectorAll('td');
-    tr.insertBefore(td, tds[tds.length - 1]);
+    const companyCell = tr.querySelector('.company-cell');
+    companyCell.insertBefore(btn, companyCell.firstChild);
   }
   async function starBtnClick(lead) {
     const u = getUsername();
