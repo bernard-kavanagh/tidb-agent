@@ -297,8 +297,9 @@
       border-radius: 10px;
       background: rgba(24,99,220,0.15);
       color: #60a5fa;
-      white-space: nowrap;
       font-weight: 500;
+      word-break: break-word;
+      max-width: 160px;
     }
     /* Size pill */
     .size-pill {
@@ -532,15 +533,21 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Column widths (8 cols: Company+Country, Desc, Pain, Rec, ICP, Score, Star, Status) ── */
-    table th:nth-child(1), table td:nth-child(1) { max-width: 240px; overflow: hidden; }
+    /* ── Column widths (7 cols: Company+Score, Desc, Pain, Rec, ICP, Star, Status) ── */
+    table th:nth-child(1), table td:nth-child(1) { max-width: 280px; overflow: hidden; }
     table th:nth-child(2), table td:nth-child(2) { max-width: 180px; }
     table th:nth-child(3), table td:nth-child(3) { min-width: 280px; max-width: 380px; }
     table th:nth-child(4), table td:nth-child(4) { min-width: 200px; max-width: 280px; }
     table th:nth-child(5), table td:nth-child(5) { max-width: 180px; }
-    table th:nth-child(6), table td:nth-child(6) { width: 60px; }
-    table th:nth-child(7), table td:nth-child(7) { width: 38px; text-align: center; padding: 2px 0; }
-    table th:nth-child(8), table td:nth-child(8) { width: 100px; }
+    table th:nth-child(6), table td:nth-child(6) { width: 38px; text-align: center; padding: 2px 0; }
+    table th:nth-child(7), table td:nth-child(7) { width: 100px; }
+
+    /* Inline score badge inside company cell */
+    .score.score-inline { width: 28px; height: 28px; font-size: 13px; flex-shrink: 0; margin-left: 4px; }
+
+    /* Mini sort toggle for score inside Company header */
+    .score-sort-toggle { cursor: pointer; margin-left: 8px; font-size: 9px; color: var(--muted); vertical-align: middle; border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; white-space: nowrap; }
+    .score-sort-toggle:hover { color: var(--text); border-color: var(--muted); }
 
     /* ── Sidebar checkboxes ─────────────────────────────────────────── */
     .country-cb, .select-all-cb { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
@@ -730,6 +737,30 @@
       display: block; text-align: right;
     }
     .sidebar-collapse-toggle:hover { text-decoration: underline; }
+
+    /* ── Sidebar collapse/expand ─────────────────────────────────────── */
+    #sidebar { transition: width 0.2s ease, min-width 0.2s ease; }
+    #sidebar.collapsed { width: 48px; min-width: 48px; overflow: hidden; }
+    #sidebar.collapsed .sidebar-section,
+    #sidebar.collapsed #region-tree { display: none; }
+    #sidebar.collapsed #geo-tabs { flex-direction: column; border-bottom: none; }
+    #sidebar.collapsed .geo-tab { padding: 10px 0; font-size: 10px; border-bottom: none; border-left: 2px solid transparent; }
+    #sidebar.collapsed .geo-tab.active { border-bottom-color: transparent; border-left-color: var(--tidb-red); }
+    .geo-tab .geo-full { display: inline; }
+    .geo-tab .geo-short { display: none; }
+    #sidebar.collapsed .geo-tab .geo-full { display: none; }
+    #sidebar.collapsed .geo-tab .geo-short { display: block; text-align: center; }
+    #sidebar-logo { position: relative; }
+    #sidebar.collapsed #sidebar-logo p,
+    #sidebar.collapsed #sidebar-logo img { display: none; }
+    #sidebar.collapsed #sidebar-logo { padding: 8px 0; display: flex; align-items: center; justify-content: center; }
+    #sidebar-toggle {
+      position: absolute; top: 8px; right: 8px;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 13px; padding: 3px 5px; line-height: 1; z-index: 5; border-radius: 4px;
+    }
+    #sidebar-toggle:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    #sidebar.collapsed #sidebar-toggle { position: static; display: block; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -737,15 +768,16 @@
 <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
 <nav id="sidebar">
   <div id="sidebar-logo">
+    <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">◀</button>
     <img src="https://static.pingcap.com/files/2022/08/07073128/logo-TiDB-1.svg" alt="TiDB" />
     <p id="sidebar-subtitle">Global Pipeline Dashboard</p>
   </div>
 
   <!-- Geo selector tabs -->
   <div id="geo-tabs">
-    <div class="geo-tab active" data-geo="EMEA"     onclick="setGeo('EMEA')">EMEA</div>
-    <div class="geo-tab"        data-geo="NAMERICA" onclick="setGeo('NAMERICA')">Americas</div>
-    <div class="geo-tab"        data-geo="APAC"     onclick="setGeo('APAC')">APAC</div>
+    <div class="geo-tab active" data-geo="EMEA"     onclick="setGeo('EMEA')"><span class="geo-full">EMEA</span><span class="geo-short">E</span></div>
+    <div class="geo-tab"        data-geo="NAMERICA" onclick="setGeo('NAMERICA')"><span class="geo-full">Americas</span><span class="geo-short">A</span></div>
+    <div class="geo-tab"        data-geo="APAC"     onclick="setGeo('APAC')"><span class="geo-full">APAC</span><span class="geo-short">A</span></div>
   </div>
 
   <div class="sidebar-section">
@@ -854,12 +886,11 @@
     <table id="leads-table">
       <thead>
         <tr>
-          <th class="sortable" onclick="sortByCol('company')">Company <span class="sort-arrow" id="sa-company"></span></th>
+          <th class="sortable" onclick="sortByCol('company')">Company <span class="sort-arrow" id="sa-company"></span><span class="score-sort-toggle" onclick="event.stopPropagation();sortByCol('score')" title="Sort by score">Score <span class="sort-arrow" id="sa-score">▼</span></span></th>
           <th>Description</th>
           <th>TiDB Pain / Use Case</th>
           <th>Recommendation</th>
           <th>ICP Contacts</th>
-          <th class="sortable" onclick="sortByCol('score')">Score <span class="sort-arrow" id="sa-score">▼</span></th>
           <th></th>
           <th class="sortable" onclick="sortByCol('status')">Status <span class="sort-arrow" id="sa-status"></span></th>
         </tr>
@@ -939,8 +970,38 @@
     return data;
   }
 
+  // ── Cookie helpers ───────────────────────────────────────────────────
+  function setCookie(name, value, days) {
+    document.cookie = name + '=' + encodeURIComponent(value) + ';path=/;max-age=' + (days * 86400);
+  }
+
+  // ── Sidebar toggle ───────────────────────────────────────────────────
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const btn     = document.getElementById('sidebar-toggle');
+    const collapsed = sidebar.classList.toggle('collapsed');
+    btn.textContent = collapsed ? '▶' : '◀';
+    setCookie('sidebarCollapsed', collapsed ? '1' : '0', 365);
+  }
+
   // ── On load ──────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
+    // Restore geo preference
+    const savedGeo = getCookie('preferredGeo');
+    if (savedGeo && ['EMEA','NAMERICA','APAC'].includes(savedGeo)) {
+      currentGeo = savedGeo;
+      document.querySelectorAll('.geo-tab').forEach(t => t.classList.toggle('active', t.dataset.geo === savedGeo));
+      const geoLabel = { EMEA: 'All EMEA', NAMERICA: 'All Americas', APAC: 'All APAC' }[savedGeo] || 'All ' + savedGeo;
+      document.getElementById('view-title').textContent = geoLabel;
+      const allItem = document.getElementById('all-geo-item');
+      if (allItem) allItem.childNodes[0].textContent = geoLabel + ' ';
+    }
+    // Restore sidebar collapsed state
+    if (getCookie('sidebarCollapsed') === '1') {
+      document.getElementById('sidebar').classList.add('collapsed');
+      const btn = document.getElementById('sidebar-toggle');
+      if (btn) btn.textContent = '▶';
+    }
     [allRegions, allSummary] = await Promise.all([
       cachedFetch(BASE_PATH + '/api/regions'),
       cachedFetch(BASE_PATH + '/api/summary'),
@@ -952,6 +1013,7 @@
 
   // ── Geo switcher ─────────────────────────────────────────────────────
   function setGeo(geo) {
+    setCookie('preferredGeo', geo, 365);
     currentGeo        = geo;
     selectedCountries = new Set();
     document.querySelectorAll('.geo-tab').forEach(t => t.classList.toggle('active', t.dataset.geo === geo));
@@ -1245,9 +1307,12 @@
         <td>
           <div class="company-cell">
             ${logoCell(lead)}
-            <div class="company-info">
-              <div class="company-name">
-                <a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a>
+            <div class="company-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="company-name">
+                  <a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a>
+                </div>
+                <span class="score score-${lead.fit_score} score-inline">${lead.fit_score}</span>
               </div>
               <div class="company-meta">
                 ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
@@ -1268,7 +1333,6 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
-        <td><span class="score score-${lead.fit_score}">${lead.fit_score}</span></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
             <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
@@ -1481,8 +1545,11 @@
         <td>
           <div class="company-cell">
             ${logoCell(lead)}
-            <div class="company-info">
-              <div class="company-name"><a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a></div>
+            <div class="company-info" style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="company-name"><a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a></div>
+                <span class="score score-${lead.fit_score} score-inline">${lead.fit_score}</span>
+              </div>
               <div class="company-meta">
                 ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
                 ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
@@ -1503,7 +1570,6 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
-        <td><span class="score score-${lead.fit_score}">${lead.fit_score}</span></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
             <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
