@@ -628,42 +628,22 @@
       padding: 1px 5px; margin-left: 4px; vertical-align: middle;
     }
     .targets-badge.hidden { display: none; }
-    .username-pill {
-      font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--surface);
-      color: var(--muted); cursor: pointer; transition: background 0.1s; white-space: nowrap;
+    .user-profile {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
     }
-    .username-pill:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-    #username-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-      z-index: 1000; align-items: center; justify-content: center;
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+      border: 1px solid var(--border); display: none;
     }
-    #username-overlay.open { display: flex; }
-    #username-modal {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      width: 380px; max-width: 94vw; padding: 28px 28px 22px; text-align: center;
+    .user-name {
+      font-size: 12px; font-weight: 600; color: var(--muted); max-width: 120px;
+      overflow: hidden; text-overflow: ellipsis;
     }
-    #username-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-    #username-modal p { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
-    #username-input {
-      width: 100%; padding: 9px 12px; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--text); font-size: 14px; font-family: inherit;
-      margin-bottom: 14px; box-sizing: border-box;
+    .signout-link {
+      font-size: 11px; color: var(--muted); text-decoration: none; padding: 4px 8px;
+      border: 1px solid var(--border); border-radius: 5px; transition: color 0.1s;
     }
-    #username-input:focus { outline: none; border-color: var(--accent); }
-    .un-btn-row { display: flex; gap: 8px; }
-    .un-save-btn {
-      flex: 1; padding: 9px; border-radius: 6px; border: none;
-      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: background 0.15s;
-    }
-    .un-save-btn:hover { background: var(--accent2); }
-    .un-skip-btn {
-      padding: 9px 14px; border-radius: 6px; border: 1px solid var(--border);
-      background: none; color: var(--muted); font-size: 13px; cursor: pointer;
-    }
-    .un-skip-btn:hover { color: var(--text); }
+    .signout-link:hover { color: var(--text); border-color: var(--accent); }
     #lists-view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
     #lists-view.visible { display: flex; }
     .lists-header {
@@ -781,7 +761,11 @@
       <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
       <button class="export-btn add-lead-btn" onclick="openAddLead()" title="Add lead by URL">+ Add Lead</button>
       <button class="targets-btn" id="targets-btn" onclick="showListsView()">⭐ My Targets<span class="targets-badge hidden" id="targets-badge">0</span></button>
-      <button class="username-pill" id="username-pill" onclick="openUsernameModal()">👤 Set name</button>
+      <div class="user-profile" id="user-profile">
+        <img class="user-avatar" id="user-avatar" src="" alt="">
+        <span class="user-name" id="user-name"></span>
+        <a class="signout-link" href="/auth/logout">Sign out</a>
+      </div>
     </div>
   </div>
 
@@ -906,8 +890,7 @@
       cachedFetch(BASE_PATH + '/api/summary'),
     ]);
     buildSidebar();
-    renderUsernamePill();
-    loadUserList();
+    loadCurrentUser();
     await loadLeads();
   });
 
@@ -1523,40 +1506,22 @@
     const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return m ? decodeURIComponent(m[2]) : '';
   }
-  function setCookie(name, val, days) {
-    const exp = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = name + '=' + encodeURIComponent(val) + ';expires=' + exp + ';path=/';
+  var _currentUser = null;
+  function getUsername() { return _currentUser ? _currentUser.email : null; }
+  function loadCurrentUser() {
+    fetch('/api/me').then(function(r) { return r.json(); }).then(function(u) {
+      _currentUser = u;
+      var av = document.getElementById('user-avatar');
+      if (av && u.picture) { av.src = u.picture; av.style.display = 'block'; }
+      var nm = document.getElementById('user-name');
+      if (nm) nm.textContent = u.name || u.email;
+      loadUserList();
+    }).catch(function() {});
   }
-  function getUsername() { return getCookie('listUsername'); }
-  function renderUsernamePill() {
-    const u = getUsername();
-    const btn = document.getElementById('username-pill');
-    if (!btn) return;
-    btn.textContent = u ? ('\u{1F464} ' + u) : '\u{1F464} Set name';
-  }
-  function openUsernameModal() {
-    const ov = document.getElementById('username-overlay');
-    if (!ov) return;
-    document.getElementById('username-input').value = getUsername();
-    ov.classList.add('open');
-    setTimeout(function() { document.getElementById('username-input').focus(); }, 50);
-  }
-  function closeUsernameModal() {
-    const ov = document.getElementById('username-overlay');
-    if (ov) ov.classList.remove('open');
-  }
-  function saveUsername() {
-    const val = (document.getElementById('username-input').value || '').trim();
-    if (!val) return;
-    setCookie('listUsername', val, 365);
-    closeUsernameModal(); renderUsernamePill(); loadUserList();
-    showToast('Saved as ' + val);
-  }
-  function skipUsernameModal() { setCookie('listUsername', '_skip', 365); closeUsernameModal(); }
 
   async function loadUserList() {
     const u = getUsername();
-    if (!u || u === '_skip') { myTargetIds = new Set(); updateStarButtons(); updateTargetsBadge(); return; }
+    if (!u) { myTargetIds = new Set(); updateStarButtons(); updateTargetsBadge(); return; }
     try {
       const data = await fetch(BASE_PATH + '/api/lists?username=' + encodeURIComponent(u)).then(function(r){return r.json();});
       if (Array.isArray(data)) { myTargetIds = new Set(data.map(function(l){return l.id;})); listsLeads = data; }
@@ -1571,7 +1536,7 @@
           const opt = document.createElement('option'); opt.value = usr; opt.textContent = usr;
           if (usr === u) opt.selected = true; sel.appendChild(opt);
         });
-        if (!users.includes(u) && u && u !== '_skip') {
+        if (!users.includes(u) && u) {
           const opt = document.createElement('option'); opt.value = u; opt.textContent = u; opt.selected = true; sel.appendChild(opt);
         }
       }
@@ -1605,7 +1570,7 @@
   }
   async function starBtnClick(lead) {
     const u = getUsername();
-    if (!u || u === '_skip') { openUsernameModal(); return; }
+    if (!u) return;
     await toggleStar(lead, u);
   }
   async function toggleStar(lead, u) {
@@ -1625,7 +1590,7 @@
 
   async function showListsView() {
     const u = getUsername();
-    if (!u || u === '_skip') { openUsernameModal(); return; }
+    if (!u) { showToast('Signing in...', 'warn'); return; }
     listsMode = true;
     document.getElementById('table-wrap').style.display = 'none';
     document.getElementById('stats-bar').style.display = 'none';
@@ -1737,12 +1702,12 @@
     document.getElementById('ls-avg').textContent = avg;
   }
   async function saveNotes(leadId, notes) {
-    const u = getUsername(); if (!u || u === '_skip') return;
+    const u = getUsername(); if (!u) return;
     await fetch(BASE_PATH + '/api/lists/add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:leadId,username:u,notes:notes})});
     const lead = listsLeads.find(function(l){return l.id===leadId;}); if (lead) lead.notes = notes;
   }
   async function removeFromList(leadId) {
-    const u = getUsername(); if (!u || u === '_skip') return;
+    const u = getUsername(); if (!u) return;
     await fetch(BASE_PATH + '/api/lists/remove', {method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:leadId,username:u})});
     myTargetIds.delete(leadId); listsLeads = listsLeads.filter(function(l){return l.id!==leadId;});
     updateStarButtons(); updateTargetsBadge(); renderListsView();
@@ -1761,9 +1726,7 @@
     a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000);
     showToast('Downloaded ' + listsLeads.length + ' targets as CSV.');
   }
-  document.addEventListener('DOMContentLoaded', function() {
-    if (!getCookie('listUsername')) setTimeout(openUsernameModal, 800);
-  });
+
 
 </script>
 
@@ -1791,17 +1754,4 @@
   </div>
 </div>
 
-<!-- ── Username modal ──────────────────────────────────────────────── -->
-<div id="username-overlay">
-  <div id="username-modal">
-    <h3>Who are you?</h3>
-    <p>Set your name to save leads to My Targets and track your pipeline.</p>
-    <input id="username-input" type="text" placeholder="Your name or email"
-           onkeydown="if(event.key==='Enter') saveUsername()">
-    <div class="un-btn-row">
-      <button class="un-save-btn" onclick="saveUsername()">Save</button>
-      <button class="un-skip-btn" onclick="skipUsernameModal()">Skip</button>
-    </div>
-  </div>
-</div>
 </html>
