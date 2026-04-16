@@ -28,11 +28,6 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 SESSION_SECRET       = os.getenv("SESSION_SECRET", "dev-secret-change-in-prod-please")
 DASHBOARD_USER       = os.getenv("DASHBOARD_USER", "tidb")
 DASHBOARD_PASS       = os.getenv("DASHBOARD_PASS", "tidb2026")
-REDIRECT_URI         = os.getenv(
-    "GOOGLE_REDIRECT_URI",
-    "https://tidb-agent-3d3xuy2hz-pingcap.vercel.app/auth/callback",
-)
-
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 
 _oauth = None
@@ -93,12 +88,7 @@ if GOOGLE_CLIENT_ID:
 
     @app.get("/auth/google")
     async def auth_google(request: Request):
-        host = request.headers.get("host", "")
-        if host.startswith("localhost") or host.startswith("127."):
-            port = host.split(":")[-1] if ":" in host else "8001"
-            redirect_uri = f"http://localhost:{port}/auth/callback"
-        else:
-            redirect_uri = REDIRECT_URI
+        redirect_uri = str(request.base_url).rstrip('/') + '/auth/callback'
         return await _oauth.google.authorize_redirect(request, redirect_uri)
 
     @app.get("/auth/callback")
