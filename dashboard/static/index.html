@@ -865,6 +865,9 @@
   const BASE_PATH = window.location.pathname.replace(/\/$/, '').replace(/\/[^\/]*$/, '') || '';
 
   // ── State ─────────────────────────────────────────────────────────────
+  // ── State ─────────────────────────────────────────────────────────────
+  let listsMode    = false;
+  let myTargetIds  = new Set();
   let currentGeo        = 'EMEA';
   let currentLeads      = [];
   let selectedCountries = new Set();
@@ -1431,9 +1434,10 @@
     document.getElementById('al-banner-area').innerHTML = '';
     document.getElementById('al-url').value = '';
   }
-  document.getElementById('add-lead-overlay').addEventListener('click', function(e) {
+  const _addLeadOverlay = document.getElementById('add-lead-overlay');
+  if (_addLeadOverlay) { _addLeadOverlay.addEventListener('click', function(e) {
     if (e.target === this) closeAddLead();
-  });
+  }); }
 
   async function doLookup() {
     const url = document.getElementById('al-url').value.trim();
@@ -1496,8 +1500,6 @@
     }
   }
   // ── My Targets: state + cookie helpers ──────────────────────────────────
-  let listsMode    = false;
-  let myTargetIds  = new Set();
   let listsLeads   = [];
   let listsSortKey = 'date';
   let listsSortDir = -1;
