@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import csv, io, secrets
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, Query, Depends, Request
+from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -148,12 +148,14 @@ async def index(request: Request, user=Depends(get_current_user)):
 
 
 @app.get("/api/regions")
-async def api_regions(user=Depends(get_current_user)):
+async def api_regions(user=Depends(get_current_user), response: Response = None):
+    response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=7200"
     return GEO_REGIONS
 
 
 @app.get("/api/summary")
-async def api_summary(user=Depends(get_current_user)):
+async def api_summary(user=Depends(get_current_user), response: Response = None):
+    response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
     conn = _db()
     try:
         return get_countries_summary(conn)
@@ -170,7 +172,9 @@ async def api_leads(
     region: str | None = Query(None),
     min_score: int = Query(1, ge=1, le=10),
     status: str | None = Query(None),
+    response: Response = None,
 ):
+    response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
     conn = _db()
     try:
         detail = str(dict(request.query_params))
@@ -253,7 +257,9 @@ async def api_search(
     geo: str | None = Query(None),
     country: str | None = Query(None),
     region: str | None = Query(None),
+    response: Response = None,
 ):
+    response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
     conn = _db()
     try:
         log_access(conn, user["email"], "search", q, getattr(request.client, "host", ""))

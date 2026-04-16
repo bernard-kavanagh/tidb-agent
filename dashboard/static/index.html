@@ -171,7 +171,6 @@
     #topbar {
       padding: 12px 24px;
       border-bottom: 1px solid var(--border);
-      /* Subtle TiDB red glow bleeding down from the top, same as pingcap.com header */
       background: linear-gradient(180deg,
         rgba(220,21,11,0.06) 0%,
         rgba(14,14,14,1) 60%);
@@ -180,6 +179,9 @@
       align-items: center;
       gap: 12px;
       flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
     #topbar h2 { font-size: 15px; font-weight: 600; flex: 1; letter-spacing: -0.2px; }
     .filter-group { display: flex; align-items: center; gap: 8px; }
@@ -203,6 +205,9 @@
       border-bottom: 1px solid var(--border);
       background: rgba(220,21,11,0.03);
       flex-shrink: 0;
+      position: sticky;
+      top: 52px;
+      z-index: 19;
     }
     .stat { display: flex; flex-direction: column; align-items: center; }
     .stat-val { font-size: 20px; font-weight: 700; color: var(--text); }
@@ -227,6 +232,10 @@
       z-index: 10;
       background: var(--bg);
     }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--text); }
+    th.sort-active { color: var(--accent) !important; }
+    .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.7; }
     th {
       text-align: left;
       padding: 10px 16px;
@@ -523,16 +532,15 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Column widths ──────────────────────────────────────────────── */
-    table th:nth-child(1), table td:nth-child(1) { max-width: 200px; overflow: hidden; }
-    table th:nth-child(2), table td:nth-child(2) { max-width: 100px; white-space: nowrap; }
-    table th:nth-child(3), table td:nth-child(3) { max-width: 180px; }
-    table th:nth-child(4), table td:nth-child(4) { min-width: 280px; max-width: 360px; }
-    table th:nth-child(5), table td:nth-child(5) { min-width: 200px; max-width: 300px; }
-    table th:nth-child(6), table td:nth-child(6) { max-width: 180px; }
-    table th:nth-child(7), table td:nth-child(7) { width: 60px; }
-    table th:nth-child(8), table td:nth-child(8) { width: 38px; text-align: center; padding: 2px 0; }
-    table th:nth-child(9), table td:nth-child(9) { width: 100px; }
+    /* ── Column widths (8 cols: Company+Country, Desc, Pain, Rec, ICP, Score, Star, Status) ── */
+    table th:nth-child(1), table td:nth-child(1) { max-width: 240px; overflow: hidden; }
+    table th:nth-child(2), table td:nth-child(2) { max-width: 180px; }
+    table th:nth-child(3), table td:nth-child(3) { min-width: 280px; max-width: 380px; }
+    table th:nth-child(4), table td:nth-child(4) { min-width: 200px; max-width: 280px; }
+    table th:nth-child(5), table td:nth-child(5) { max-width: 180px; }
+    table th:nth-child(6), table td:nth-child(6) { width: 60px; }
+    table th:nth-child(7), table td:nth-child(7) { width: 38px; text-align: center; padding: 2px 0; }
+    table th:nth-child(8), table td:nth-child(8) { width: 100px; }
 
     /* ── Sidebar checkboxes ─────────────────────────────────────────── */
     .country-cb, .select-all-cb { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
@@ -687,6 +695,41 @@
       font-size: 10px; padding: 0 2px; vertical-align: middle;
     }
     .sort-btn.active { color: var(--warm); }
+
+    /* ── Quick filter pills ─────────────────────────────────────────── */
+    #quick-filters {
+      display: flex; gap: 8px; padding: 8px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
+      flex-wrap: wrap; align-items: center;
+    }
+    .qf-pill {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      border-radius: 12px; cursor: pointer; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .qf-pill:hover { color: var(--text); border-color: var(--muted); }
+    .qf-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .qf-pill.hot.active  { background: var(--hot); border-color: var(--hot); }
+    .qf-pill.warm.active { background: var(--warm); border-color: var(--warm); color: #000; }
+    .qf-pill.cool.active { background: var(--cool); border-color: var(--cool); color: #000; }
+
+    /* ── Lead count indicator ───────────────────────────────────────── */
+    #lead-count-indicator {
+      font-size: 11px; color: var(--muted); white-space: nowrap;
+    }
+
+    /* ── Collapsible sidebar regions ────────────────────────────────── */
+    .region-chevron { font-size: 10px; margin-right: 4px; color: var(--muted); }
+    .region-countries { overflow: hidden; }
+    .region-countries.collapsed { display: none; }
+    .sidebar-collapse-toggle {
+      font-size: 10px; color: var(--accent); cursor: pointer; padding: 4px 16px 4px;
+      display: block; text-align: right;
+    }
+    .sidebar-collapse-toggle:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -714,6 +757,7 @@
   </div>
 
   <div id="region-tree" class="sidebar-section">
+    <span class="sidebar-collapse-toggle" id="collapse-all-btn" onclick="toggleAllRegions()">Collapse All</span>
     <!-- Populated by JS -->
   </div>
 </nav>
@@ -722,6 +766,7 @@
 <div id="main">
   <div id="topbar">
     <h2 id="view-title">All EMEA</h2>
+    <span id="lead-count-indicator" style="display:none"></span>
 
     <div class="search-wrap">
       <input type="text" id="search-input" placeholder="Search: branching, vector, AI agents…"
@@ -792,6 +837,13 @@
     </div>
   </div>
 
+  <div id="quick-filters">
+    <span class="qf-pill active" id="qf-all"      onclick="setQuickFilter(null)">All</span>
+    <span class="qf-pill hot"    id="qf-hot"       onclick="setQuickFilter(9)">🔥 Hot (9–10)</span>
+    <span class="qf-pill warm"   id="qf-warm"      onclick="setQuickFilter(7)">Strong (7–8)</span>
+    <span class="qf-pill cool"   id="qf-cool"      onclick="setQuickFilter(5)">Moderate (5–6)</span>
+  </div>
+
   <div id="table-wrap">
     <div id="loading" style="display:none">
       <div class="spinner"></div> Loading leads…
@@ -802,15 +854,14 @@
     <table id="leads-table">
       <thead>
         <tr>
-          <th>Company</th>
-          <th>Country</th>
+          <th class="sortable" onclick="sortByCol('company')">Company <span class="sort-arrow" id="sa-company"></span></th>
           <th>Description</th>
           <th>TiDB Pain / Use Case</th>
           <th>Recommendation</th>
           <th>ICP Contacts</th>
-          <th>Score</th>
+          <th class="sortable" onclick="sortByCol('score')">Score <span class="sort-arrow" id="sa-score">▼</span></th>
           <th></th>
-          <th>Status</th>
+          <th class="sortable" onclick="sortByCol('status')">Status <span class="sort-arrow" id="sa-status"></span></th>
         </tr>
       </thead>
       <tbody id="leads-body"></tbody>
@@ -865,7 +916,6 @@
   const BASE_PATH = window.location.pathname.replace(/\/$/, '').replace(/\/[^\/]*$/, '') || '';
 
   // ── State ─────────────────────────────────────────────────────────────
-  // ── State ─────────────────────────────────────────────────────────────
   let listsMode    = false;
   let myTargetIds  = new Set();
   let currentGeo        = 'EMEA';
@@ -873,6 +923,9 @@
   let selectedCountries = new Set();
   let allRegions        = {};
   let allSummary        = [];
+  let sortCol = 'score';
+  let sortDir = -1;
+  let quickFilterMin = null;
 
   // ── API cache (5 min TTL) ─────────────────────────────────────────────
   const _apiCache = new Map();
@@ -914,6 +967,13 @@
   }
 
   // ── Sidebar ──────────────────────────────────────────────────────────
+  function getSidebarState() {
+    try { return JSON.parse(decodeURIComponent(getCookie('sidebarState') || '{}')) || {}; } catch { return {}; }
+  }
+  function saveSidebarState(state) {
+    document.cookie = 'sidebarState=' + encodeURIComponent(JSON.stringify(state)) + ';path=/;max-age=31536000';
+  }
+
   function buildSidebar() {
     const geoData      = allRegions[currentGeo] || {};
     const countryCount = {};
@@ -926,27 +986,47 @@
     }
     document.getElementById('badge-all').textContent = geoTotal || '—';
     const tree = document.getElementById('region-tree');
+    const collapseBtn = document.getElementById('collapse-all-btn');
     tree.innerHTML = '';
+    tree.appendChild(collapseBtn);
+    const sidebarState = getSidebarState();
+
     for (const [region, countries] of Object.entries(geoData)) {
       const active      = countries.filter(c => countryCount[c]?.total > 0);
       const regionTotal = active.reduce((s, c) => s + countryCount[c].total, 0);
       if (regionTotal === 0) continue;
       const allChecked  = active.length > 0 && active.every(c => selectedCountries.has(c));
       const someChecked = active.some(c => selectedCountries.has(c));
+      const collapsed   = !!sidebarState[region];
+
       const rDiv = document.createElement('div');
       rDiv.className = 'sidebar-item region-header';
+      rDiv.style.cursor = 'pointer';
+
+      const chevron = document.createElement('span');
+      chevron.className = 'region-chevron';
+      chevron.textContent = collapsed ? '▸' : '▾';
+
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.className = 'select-all-cb';
       cb.checked = allChecked; cb.indeterminate = someChecked && !allChecked;
       cb.addEventListener('change', (e) => { e.stopPropagation(); toggleSubRegion(region, e.target.checked); });
+
       const lbl = document.createElement('label');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;font-weight:600;font-size:12px;color:var(--text)';
+      lbl.style.cssText = 'display:flex;align-items:center;gap:4px;flex:1;cursor:pointer;font-weight:600;font-size:12px;color:var(--text)';
+      lbl.appendChild(chevron);
       lbl.appendChild(cb);
       lbl.appendChild(document.createTextNode(' ' + region));
+
       const badge = document.createElement('span');
       badge.className = 'badge'; badge.textContent = regionTotal;
       rDiv.appendChild(lbl); rDiv.appendChild(badge);
       tree.appendChild(rDiv);
+
+      const countryGroup = document.createElement('div');
+      countryGroup.className = 'region-countries' + (collapsed ? ' collapsed' : '');
+      countryGroup.dataset.region = region;
+
       for (const country of countries) {
         const info = countryCount[country];
         if (!info || info.total === 0) continue;
@@ -964,9 +1044,43 @@
         hb.className = info.hot > 0 ? 'badge hot' : 'badge';
         hb.textContent = info.hot > 0 ? '🔥 ' + info.hot : info.total;
         cDiv.appendChild(clbl); cDiv.appendChild(hb);
-        tree.appendChild(cDiv);
+        countryGroup.appendChild(cDiv);
       }
+      tree.appendChild(countryGroup);
+
+      rDiv.addEventListener('click', (e) => {
+        if (e.target === cb || e.target.closest('input')) return;
+        const st = getSidebarState();
+        const isNowCollapsed = !countryGroup.classList.contains('collapsed');
+        countryGroup.classList.toggle('collapsed', isNowCollapsed);
+        chevron.textContent = isNowCollapsed ? '▸' : '▾';
+        st[region] = isNowCollapsed;
+        saveSidebarState(st);
+        updateCollapseAllBtn();
+      });
     }
+    updateCollapseAllBtn();
+  }
+
+  function updateCollapseAllBtn() {
+    const btn = document.getElementById('collapse-all-btn');
+    if (!btn) return;
+    const groups = document.querySelectorAll('.region-countries');
+    const anyExpanded = [...groups].some(g => !g.classList.contains('collapsed'));
+    btn.textContent = anyExpanded ? 'Collapse All' : 'Expand All';
+  }
+
+  function toggleAllRegions() {
+    const groups = document.querySelectorAll('.region-countries');
+    const anyExpanded = [...groups].some(g => !g.classList.contains('collapsed'));
+    const st = getSidebarState();
+    groups.forEach(g => {
+      g.classList.toggle('collapsed', anyExpanded);
+      st[g.dataset.region] = anyExpanded;
+    });
+    document.querySelectorAll('.region-chevron').forEach(c => { c.textContent = anyExpanded ? '▸' : '▾'; });
+    saveSidebarState(st);
+    updateCollapseAllBtn();
   }
 
   function toggleCountry(country) {
@@ -996,7 +1110,13 @@
     let filtered = currentLeads;
     if (selectedCountries.size > 0) filtered = filtered.filter(l => selectedCountries.has(l.country));
     if (industry)                    filtered = filtered.filter(l => l.industry === industry);
+    if (quickFilterMin !== null) {
+      const max = quickFilterMin + 1;
+      filtered = filtered.filter(l => l.fit_score >= quickFilterMin && l.fit_score <= max);
+    }
+    filtered = sortLeads(filtered);
     updateTitle();
+    updateLeadCountIndicator(filtered.length, currentLeads.length);
     const empty = document.getElementById('empty');
     const table = document.getElementById('leads-table');
     if (!filtered.length) {
@@ -1005,6 +1125,52 @@
       empty.style.display = 'none'; table.style.display = 'table';
       renderTable(filtered); updateStats(filtered);
     }
+  }
+
+  function updateLeadCountIndicator(shown, total) {
+    const el = document.getElementById('lead-count-indicator');
+    if (!el) return;
+    if (shown !== total) {
+      el.textContent = 'Showing ' + shown + ' of ' + total + ' leads';
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  function sortLeads(leads) {
+    return leads.slice().sort((a, b) => {
+      let av, bv;
+      if (sortCol === 'score')   { av = a.fit_score || 0;        bv = b.fit_score || 0;        return sortDir * (bv - av); }
+      if (sortCol === 'company') { av = (a.company_name || '').toLowerCase(); bv = (b.company_name || '').toLowerCase(); return sortDir * (av < bv ? -1 : av > bv ? 1 : 0); }
+      if (sortCol === 'status')  { av = a.status || '';           bv = b.status || '';           return sortDir * (av < bv ? -1 : av > bv ? 1 : 0); }
+      if (sortCol === 'country') { av = (a.country || '').toLowerCase(); bv = (b.country || '').toLowerCase(); return sortDir * (av < bv ? -1 : av > bv ? 1 : 0); }
+      if (sortCol === 'industry'){ av = (a.industry || '').toLowerCase(); bv = (b.industry || '').toLowerCase(); return sortDir * (av < bv ? -1 : av > bv ? 1 : 0); }
+      return 0;
+    });
+  }
+
+  function sortByCol(col) {
+    if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+    document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+    document.querySelectorAll('th.sortable').forEach(el => el.classList.remove('sort-active'));
+    const arrow = sortDir === 1 ? '▲' : '▼';
+    const saEl = document.getElementById('sa-' + col);
+    if (saEl) { saEl.textContent = arrow; saEl.closest('th').classList.add('sort-active'); }
+    applyClientFilters();
+  }
+
+  function setQuickFilter(min) {
+    quickFilterMin = min;
+    document.querySelectorAll('.qf-pill').forEach(p => p.classList.remove('active'));
+    const idMap = { null: 'qf-all', 9: 'qf-hot', 7: 'qf-warm', 5: 'qf-cool' };
+    const activeId = idMap[min];
+    if (activeId) document.getElementById(activeId)?.classList.add('active');
+    if (min !== null) {
+      document.getElementById('score-filter').value = min;
+      document.getElementById('score-label').textContent = min;
+    }
+    applyClientFilters();
   }
 
   function updateTitle() {
@@ -1059,7 +1225,12 @@
   // ── Refresh ──────────────────────────────────────────────────────────
   async function refreshData() {
     _apiCache.clear();
-    [allRegions, allSummary] = await Promise.all([cachedFetch(BASE_PATH + '/api/regions'), cachedFetch(BASE_PATH + '/api/summary')]);
+    const bust = '?_bust=' + Date.now();
+    const [r, s] = await Promise.all([
+      fetch(BASE_PATH + '/api/regions' + bust).then(r => r.json()),
+      fetch(BASE_PATH + '/api/summary' + bust).then(r => r.json()),
+    ]);
+    allRegions = r; allSummary = s;
     buildSidebar(); await loadLeads(); showToast('Data refreshed.');
   }
 
@@ -1082,12 +1253,11 @@
                 ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
                 ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
               </div>
+              <div class="company-meta" style="margin-top:2px">
+                ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
+              </div>
             </div>
           </div>
-        </td>
-        <td>
-          <div>${flag(lead.country)} ${esc(lead.country)}</div>
-          <div class="company-meta" style="font-size:11px">${esc(lead.region)}</div>
         </td>
         <td>
           <div class="collapsible-cell">
@@ -1318,12 +1488,11 @@
                 ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
                 ${sim}
               </div>
+              <div class="company-meta" style="margin-top:2px">
+                ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
+              </div>
             </div>
           </div>
-        </td>
-        <td>
-          <div>${flag(lead.country)} ${esc(lead.country)}</div>
-          <div class="company-meta" style="font-size:11px">${esc(lead.region)}</div>
         </td>
         <td>
           <div class="collapsible-cell">
