@@ -325,13 +325,22 @@ async def api_update_status(
         conn.close()
 
 
+try:
+    from agent.scraper import scrape_text as _scrape_text
+    from agent.analyzer import analyse_company as _analyse_company
+    from agent.storage import upsert_lead as _upsert_lead
+    _LOOKUP_AVAILABLE = True
+except ImportError:
+    _LOOKUP_AVAILABLE = False
+
+
 @app.post("/api/lookup")
 async def api_lookup(request: Request, body: dict, user=Depends(get_current_user)):
     import re
     import anthropic as _anthropic
-    from agent.scraper import scrape_text
-    from agent.analyzer import analyse_company
-    from agent.storage import upsert_lead
+
+    if not _LOOKUP_AVAILABLE:
+        return dict(source="error", message="Add Lead is not available in cloud deployment. Use the EC2 instance.")
 
     url = (body.get("url") or "").strip()
     if not url:
@@ -359,14 +368,14 @@ async def api_lookup(request: Request, body: dict, user=Depends(get_current_user
 
     try:
         client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        scraped = scrape_text(url)
-        analysis = analyse_company(client, company_name=domain, website=url,
-                                   content=scraped, geo=geo)
+        scraped = _scrape_text(url)
+        analysis = _analyse_company(client, company_name=domain, website=url,
+                                    content=scraped, geo=geo)
         if not analysis or (analysis.get("fit_score") or 0) < 1:
             return dict(source="error", message="Could not analyse this URL")
         conn2 = _db()
         try:
-            lead_id = upsert_lead(
+            lead_id = _upsert_lead(
                 conn2,
                 company_name=analysis.get("company_name") or domain,
                 website=url,

@@ -1,12 +1,4 @@
-anthropic>=0.40.0
-PyMySQL>=1.1.0
-certifi>=2024.0.0
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-lxml>=5.0.0
-fastapi>=0.110.0
-uvicorn>=0.27.0
-python-dotenv>=1.0.0
-httpx>=0.26.0
-rich>=13.7.0
-sentence-transformers>=3.0.0
+# See requirements-vercel.txt (Vercel) or requirements-ec2.txt (EC2/local)
+# Install the one you need:
+#   pip install -r requirements-ec2.txt    # local development
+#   pip install -r requirements-vercel.txt # Vercel deployment
