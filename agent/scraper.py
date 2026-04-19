@@ -44,7 +44,7 @@ def scrape_text(url: str, max_chars: int = 6000) -> str | None:
     if not resp:
         return None
 
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
 
     # Remove boilerplate tags
     for tag in soup(["script", "style", "nav", "header", "footer",
@@ -64,7 +64,7 @@ def extract_links(url: str, same_domain: bool = True) -> list[str]:
     if not resp:
         return []
     base_domain = urlparse(url).netloc
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
     links = []
     for a in soup.find_all("a", href=True):
         href = a["href"].strip()
@@ -88,7 +88,7 @@ def extract_company_cards(url: str) -> list[dict]:
     if not resp:
         return []
 
-    soup = BeautifulSoup(resp.text, "lxml")
+    soup = BeautifulSoup(resp.text, "html.parser")
     base_domain = urlparse(url).netloc
     results = []
     seen = set()
