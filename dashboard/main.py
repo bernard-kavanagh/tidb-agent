@@ -324,6 +324,9 @@ async def api_update_status(
 from agent.scraper import scrape_text as _scrape_text
 from agent.analyzer import analyse_company as _analyse_company
 from agent.storage import upsert_lead as _upsert_lead
+import agent.storage as _agent_storage
+if not VECTOR_SEARCH_AVAILABLE:
+    _agent_storage.embed_lead = lambda *a, **kw: None
 
 
 @app.post("/api/lookup")
