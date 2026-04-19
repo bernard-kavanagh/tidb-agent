@@ -321,22 +321,15 @@ async def api_update_status(
         conn.close()
 
 
-try:
-    from agent.scraper import scrape_text as _scrape_text
-    from agent.analyzer import analyse_company as _analyse_company
-    from agent.storage import upsert_lead as _upsert_lead
-    _LOOKUP_AVAILABLE = True
-except ImportError:
-    _LOOKUP_AVAILABLE = False
+from agent.scraper import scrape_text as _scrape_text
+from agent.analyzer import analyse_company as _analyse_company
+from agent.storage import upsert_lead as _upsert_lead
 
 
 @app.post("/api/lookup")
 async def api_lookup(request: Request, body: dict, user=Depends(get_current_user)):
     import re
     import anthropic as _anthropic
-
-    if not _LOOKUP_AVAILABLE:
-        return dict(source="error", message="Add Lead is not available in cloud deployment. Use the EC2 instance.")
 
     url = (body.get("url") or "").strip()
     if not url:
