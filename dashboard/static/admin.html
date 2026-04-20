@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TiDB Lead Pipeline · Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0a0a0f;
+      --surface: #111118;
+      --border:  #1e1e2a;
+      --accent:  #1863dc;
+      --text:    #f0f0f5;
+      --muted:   #888898;
+      --red:     #DC150B;
+      --green:   #22c55e;
+      --warm:    #f59e0b;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: "DM Sans", -apple-system, sans-serif;
+      font-size: 14px; min-height: 100vh; padding-bottom: 60px;
+    }
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 14px 32px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 10;
+      border-top: 3px solid var(--red);
+    }
+    header h1 { font-size: 15px; font-weight: 700; flex: 1; }
+    header h1 span { color: var(--red); }
+    .back-link {
+      font-size: 12px; color: var(--muted); text-decoration: none;
+      padding: 5px 12px; border: 1px solid var(--border);
+      border-radius: 6px; transition: color 0.1s, border-color 0.1s;
+    }
+    .back-link:hover { color: var(--text); border-color: var(--accent); }
+    .refresh-btn {
+      font-size: 12px; font-weight: 600; padding: 5px 14px;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer;
+    }
+    .refresh-btn:hover { border-color: var(--accent); }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+    /* KPI row */
+    .kpi-row { display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+    .kpi-card {
+      flex: 1; min-width: 130px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+    }
+    .kpi-val { font-size: 30px; font-weight: 700; color: var(--text); }
+    .kpi-val.accent { color: var(--accent); }
+    .kpi-val.hot    { color: var(--red); }
+    .kpi-val.green  { color: var(--green); }
+    .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 5px; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; overflow: hidden; }
+    .card-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+      margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+
+    /* Bar chart */
+    .bar-chart { display: flex; flex-direction: column; gap: 7px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; }
+    .bar-label { font-size: 11px; color: var(--muted); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { flex: 1; background: rgba(255,255,255,0.04); border-radius: 4px; height: 16px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; transition: width 0.5s ease; min-width: 2px; }
+    .bar-value { font-size: 11px; font-weight: 600; color: var(--text); width: 36px; text-align: right; flex-shrink: 0; }
+
+    /* Funnel */
+    .funnel { display: flex; flex-direction: column; gap: 8px; }
+    .funnel-row { display: flex; align-items: center; gap: 10px; }
+    .funnel-label { font-size: 12px; width: 120px; flex-shrink: 0; }
+    .funnel-bar-wrap { flex: 1; height: 24px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+    .funnel-bar { height: 100%; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; border-left: 3px solid transparent; }
+    .funnel-n { font-size: 11px; font-weight: 700; }
+    .funnel-count { font-size: 13px; font-weight: 700; width: 40px; text-align: right; flex-shrink: 0; }
+
+    /* Data table */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      text-align: left; padding: 7px 12px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    .data-table td { padding: 7px 12px; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .score-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 6px; font-size: 11px; font-weight: 700;
+    }
+    .s9,.s10 { background: rgba(220,21,11,0.2); color: var(--red); }
+    .s7,.s8  { background: rgba(245,158,11,0.2); color: var(--warm); }
+    .s5,.s6  { background: rgba(24,99,220,0.2);  color: var(--accent); }
+    .s1,.s2,.s3,.s4 { background: rgba(136,136,136,0.15); color: var(--muted); }
+
+    .loading-state { display: flex; align-items: center; justify-content: center; min-height: 100px; color: var(--muted); font-size: 13px; }
+    .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--red); border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { color: #f87171; font-size: 12px; padding: 12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1><span>TiDB</span> Cloud · Lead Pipeline Analytics</h1>
+  <a class="back-link" href="/">← Dashboard</a>
+  <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+</header>
+<div class="container">
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-val accent" id="k-total">—</div><div class="kpi-label">Total Leads</div></div>
+    <div class="kpi-card"><div class="kpi-val hot"    id="k-hot">—</div><div class="kpi-label">Hot (8–10)</div></div>
+    <div class="kpi-card"><div class="kpi-val"        id="k-avg">—</div><div class="kpi-label">Avg Fit Score</div></div>
+    <div class="kpi-card"><div class="kpi-val green"  id="k-users">—</div><div class="kpi-label">Active Users</div></div>
+    <div class="kpi-card"><div class="kpi-val"        id="k-events">—</div><div class="kpi-label">Total Events</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Leads Added Per Week</div>
+      <div id="chart-trends"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Score Distribution</div>
+      <div id="chart-scores"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Pipeline Funnel</div>
+      <div id="chart-pipeline"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Geo Coverage</div>
+      <div id="chart-geo" style="max-height:320px;overflow-y:auto"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Top Industries</div>
+      <div id="chart-industries"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">User Activity</div>
+      <div id="chart-users"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">Recent Leads Added</div>
+    <div id="chart-recent"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+  </div>
+</div>
+
+<script>
+  const PIPELINE_ORDER  = ['new','contacted','meeting_booked','qualified','poc_active','closed_won','closed_lost','disqualified'];
+  const PIPELINE_COLORS = { new:'#888',contacted:'#22d3ee',meeting_booked:'#fbbf24',qualified:'#fb923c',poc_active:'#c084fc',closed_won:'#22c55e',closed_lost:'#ef4444',disqualified:'#4b5563' };
+  const PIPELINE_LABELS = { new:'New',contacted:'Contacted',meeting_booked:'Meeting Booked',qualified:'Qualified',poc_active:'POC Active',closed_won:'Closed Won',closed_lost:'Closed Lost',disqualified:'Disqualified' };
+
+  function loading(id) { document.getElementById(id).innerHTML = '<div class="loading-state"><div class="spinner"></div>Loading…</div>'; }
+  function err(id, msg) { document.getElementById(id).innerHTML = '<div class="err">⚠ ' + msg + '</div>'; }
+
+  async function apiFetch(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+
+  function barChart(containerId, rows, labelKey, valueKey, colorFn) {
+    if (!rows.length) { document.getElementById(containerId).innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px">No data</div>'; return; }
+    const max = Math.max(...rows.map(r => r[valueKey]), 1);
+    document.getElementById(containerId).innerHTML = '<div class="bar-chart">' + rows.map(function(r) {
+      const pct = Math.round((r[valueKey] / max) * 100);
+      const col = typeof colorFn === 'function' ? colorFn(r) : colorFn;
+      return '<div class="bar-row"><div class="bar-label" title="' + r[labelKey] + '">' + r[labelKey] + '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
+        '<div class="bar-value">' + r[valueKey] + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  async function loadAll() {
+    ['trends','scores','pipeline','geo','industries','users','recent'].forEach(function(k) { loading('chart-' + k); });
+
+    const results = await Promise.allSettled([
+      apiFetch('/api/admin/lead-trends'),
+      apiFetch('/api/admin/score-distribution'),
+      apiFetch('/api/admin/pipeline'),
+      apiFetch('/api/admin/geo-coverage'),
+      apiFetch('/api/admin/top-industries'),
+      apiFetch('/api/admin/user-activity'),
+      apiFetch('/api/admin/recent-leads'),
+    ]);
+
+    const [trends, scores, pipeline, geo, industries, users, recent] = results.map(function(r) {
+      return r.status === 'fulfilled' ? r.value : null;
+    });
+
+    // KPIs
+    if (scores) {
+      const total = scores.reduce(function(s,d){return s+d.count;},0);
+      const hot   = scores.filter(function(d){return d.fit_score>=8;}).reduce(function(s,d){return s+d.count;},0);
+      const avg   = total ? (scores.reduce(function(s,d){return s+d.fit_score*d.count;},0)/total).toFixed(1) : '—';
+      document.getElementById('k-total').textContent = total;
+      document.getElementById('k-hot').textContent   = hot;
+      document.getElementById('k-avg').textContent   = avg;
+    }
+    if (users) {
+      document.getElementById('k-users').textContent  = users.length;
+      document.getElementById('k-events').textContent = users.reduce(function(s,u){return s+u.events;},0);
+    }
+
+    // Lead Trends
+    if (trends) {
+      const trendsAsc = trends.slice().reverse().map(function(d){ return { label: String(d.week), count: d.count }; });
+      barChart('chart-trends', trendsAsc, 'label', 'count', '#1863dc');
+    } else { err('chart-trends', 'Failed to load'); }
+
+    // Score Distribution
+    if (scores) {
+      const scoreColors = {1:'#555',2:'#555',3:'#555',4:'#555',5:'#6b7280',6:'#6b7280',7:'#1863dc',8:'#1863dc',9:'#f59e0b',10:'#DC150B'};
+      barChart('chart-scores',
+        scores.map(function(d){return {label:'Score '+d.fit_score, count:d.count, _sc:d.fit_score};}),
+        'label', 'count',
+        function(r){ return scoreColors[r._sc] || '#888'; }
+      );
+    } else { err('chart-scores', 'Failed to load'); }
+
+    // Pipeline Funnel
+    if (pipeline) {
+      const pmap = {};
+      pipeline.forEach(function(d){ pmap[d.status]=d.count; });
+      const maxP = Math.max(...Object.values(pmap), 1);
+      const rows = PIPELINE_ORDER.filter(function(s){ return pmap[s]; });
+      document.getElementById('chart-pipeline').innerHTML = rows.length ? '<div class="funnel">' + rows.map(function(s) {
+        const n = pmap[s]; const pct = Math.round((n/maxP)*100);
+        const col = PIPELINE_COLORS[s];
+        return '<div class="funnel-row"><div class="funnel-label" style="color:'+col+'">'+(PIPELINE_LABELS[s]||s)+'</div>' +
+          '<div class="funnel-bar-wrap"><div class="funnel-bar" style="width:'+pct+'%;background:'+col+'18;border-left-color:'+col+'">' +
+          '<span class="funnel-n" style="color:'+col+'">'+n+'</span></div></div></div>';
+      }).join('') + '</div>' : '<div style="color:var(--muted);font-size:12px;padding:8px">No data</div>';
+    } else { err('chart-pipeline', 'Failed to load'); }
+
+    // Geo Coverage
+    if (geo) {
+      document.getElementById('chart-geo').innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>Geo</th><th>Country</th><th>Leads</th><th>Avg Score</th></tr></thead><tbody>' +
+        geo.map(function(d){
+          const sc = d.avg_score>=8?'var(--red)':d.avg_score>=6?'var(--warm)':'var(--muted)';
+          return '<tr><td style="color:var(--muted)">'+(d.geo||'—')+'</td><td>'+d.country+'</td><td style="font-weight:600">'+d.leads+'</td><td style="color:'+sc+'">'+d.avg_score+'</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else { err('chart-geo', 'Failed to load'); }
+
+    // Top Industries
+    if (industries) {
+      barChart('chart-industries',
+        industries.map(function(d){return {label:d.industry||'Unknown',count:d.count};}),
+        'label','count','#1863dc');
+    } else { err('chart-industries', 'Failed to load'); }
+
+    // User Activity
+    if (users) {
+      document.getElementById('chart-users').innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>User</th><th>Events</th><th>Active Days</th><th>Last Active</th></tr></thead><tbody>' +
+        users.map(function(u){
+          return '<tr><td style="font-size:11px">'+u.username+'</td><td style="font-weight:600">'+u.events+'</td>' +
+            '<td style="color:var(--muted)">'+u.active_days+'</td>' +
+            '<td style="color:var(--muted);font-size:11px">'+(u.last_active||'').slice(0,10)+'</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else { err('chart-users', 'Failed to load'); }
+
+    // Recent Leads
+    if (recent) {
+      document.getElementById('chart-recent').innerHTML = '<table class="data-table"><thead><tr>' +
+        '<th>Company</th><th>Country</th><th>Industry</th><th>Score</th><th>Added</th></tr></thead><tbody>' +
+        recent.map(function(l){
+          const sc = l.fit_score>=9?'s9':l.fit_score>=7?'s7':l.fit_score>=5?'s5':'s3';
+          return '<tr><td style="font-weight:600">'+l.company_name+'</td>' +
+            '<td style="color:var(--muted)">'+(l.country||'—')+'</td>' +
+            '<td style="color:var(--muted)">'+(l.industry||'—')+'</td>' +
+            '<td><span class="score-badge '+sc+'">'+l.fit_score+'</span></td>' +
+            '<td style="color:var(--muted);font-size:11px">'+(l.created_at||'').slice(0,10)+'</td></tr>';
+        }).join('') + '</tbody></table>';
+    } else { err('chart-recent', 'Failed to load'); }
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

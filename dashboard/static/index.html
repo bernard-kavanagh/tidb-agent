@@ -413,10 +413,14 @@
       cursor: pointer;
       background: var(--surface);
     }
-    .status-new          { border-color: var(--border); color: var(--muted); }
-    .status-contacted    { border-color: #22d3ee44; color: var(--cool); background: rgba(34,211,238,0.07); }
-    .status-qualified    { border-color: #22c55e44; color: var(--green); background: rgba(34,197,94,0.07); }
-    .status-disqualified { border-color: #ef444444; color: var(--red); background: rgba(239,68,68,0.07); }
+    .status-new            { border-color: var(--border); color: var(--muted); }
+    .status-contacted      { border-color: #22d3ee44; color: var(--cool); background: rgba(34,211,238,0.07); }
+    .status-meeting_booked { border-color: #fbbf2444; color: #fbbf24; background: rgba(251,191,36,0.07); }
+    .status-qualified      { border-color: #f9731644; color: #fb923c; background: rgba(249,115,22,0.07); }
+    .status-poc_active     { border-color: #a855f744; color: #c084fc; background: rgba(168,85,247,0.07); }
+    .status-closed_won     { border-color: #22c55e44; color: var(--green); background: rgba(34,197,94,0.07); }
+    .status-closed_lost    { border-color: #ef444444; color: var(--red); background: rgba(239,68,68,0.07); }
+    .status-disqualified   { border-color: #4b556344; color: #6b7280; background: rgba(75,85,99,0.07); }
 
     /* Contacted flash */
     @keyframes contactedFlash {
@@ -424,6 +428,125 @@
       100% { background: transparent; }
     }
     tr.just-contacted td { animation: contactedFlash 1.2s ease-out; }
+
+    /* Stack pill */
+    .stack-pill {
+      font-size: 10px; padding: 1px 7px; border-radius: 10px;
+      background: rgba(249,115,22,0.12); color: #fb923c;
+      font-weight: 500; white-space: nowrap; max-width: 160px;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Action column buttons */
+    .action-col { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+    .share-btn, .brief-btn {
+      background: none; border: none; cursor: pointer; font-size: 14px;
+      padding: 0; color: var(--muted); transition: color 0.15s, transform 0.1s;
+      line-height: 1; flex-shrink: 0;
+    }
+    .share-btn:hover { color: var(--accent); transform: scale(1.15); }
+    .brief-btn:hover { color: var(--warm); transform: scale(1.15); }
+
+    /* Lead detail modal */
+    #lead-detail-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 1001; align-items: center; justify-content: center; padding: 24px;
+    }
+    #lead-detail-overlay.open { display: flex; }
+    #lead-detail-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      width: 720px; max-width: 96vw; max-height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .ld-header {
+      padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .ld-header-info { flex: 1; min-width: 0; }
+    .ld-company { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .ld-company a { color: var(--text); text-decoration: none; }
+    .ld-company a:hover { color: var(--accent); }
+    .ld-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+    .ld-body { overflow-y: auto; padding: 20px 24px; flex: 1; }
+    .ld-section { margin-bottom: 18px; }
+    .ld-section-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+      margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border);
+    }
+    .ld-section p { font-size: 13px; line-height: 1.6; color: var(--muted); }
+    .ld-section p.primary { color: var(--text); }
+    .ld-footer {
+      padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
+      display: flex; gap: 8px; align-items: center;
+    }
+
+    /* Brief modal */
+    #brief-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 1002; align-items: center; justify-content: center; padding: 24px;
+    }
+    #brief-overlay.open { display: flex; }
+    #brief-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      width: 680px; max-width: 96vw; max-height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .brief-header {
+      padding: 18px 24px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .brief-header h3 { font-size: 15px; font-weight: 600; flex: 1; }
+    .brief-body { overflow-y: auto; padding: 20px 24px; flex: 1; }
+    .brief-section { margin-bottom: 18px; }
+    .brief-section-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--accent);
+      margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border);
+    }
+    .brief-section p { font-size: 13px; line-height: 1.6; color: var(--text); }
+    .brief-section ol, .brief-section ul { padding-left: 18px; }
+    .brief-section li { font-size: 13px; line-height: 1.7; color: var(--text); margin-bottom: 3px; }
+    .brief-email-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-size: 12px; line-height: 1.6; color: var(--text);
+      white-space: pre-wrap; font-family: inherit;
+    }
+    .brief-footer {
+      padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .brief-btn-primary {
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px;
+      border: 1px solid var(--accent); background: rgba(24,99,220,0.15);
+      color: var(--accent); cursor: pointer; white-space: nowrap;
+    }
+    .brief-btn-primary:hover { background: rgba(24,99,220,0.25); }
+    .brief-btn-gmail {
+      font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px;
+      border: 1px solid #22c55e40; background: rgba(34,197,94,0.08);
+      color: #22c55e; cursor: pointer; white-space: nowrap;
+    }
+    .brief-btn-gmail:hover { background: rgba(34,197,94,0.15); }
+    .brief-loading { display: flex; align-items: center; gap: 12px; padding: 40px 0; color: var(--muted); font-size: 13px; }
+
+    /* Copy button */
+    .copy-wrap { position: relative; }
+    .copy-btn {
+      position: absolute; top: 4px; right: 4px;
+      background: none; border: none; cursor: pointer;
+      font-size: 13px; color: #888;
+      opacity: 0; transition: opacity 0.15s;
+      padding: 2px; line-height: 1; z-index: 2; border-radius: 3px;
+    }
+    .copy-wrap:hover .copy-btn { opacity: 0.8; }
+    .copy-btn.copied { opacity: 1 !important; color: var(--green); font-size: 10px; font-weight: 600; }
+
+    /* Pipeline funnel pills */
+    .pipeline-pill {
+      font-size: 10px; font-weight: 600; padding: 2px 6px;
+      border-radius: 10px; border: 1px solid; white-space: nowrap;
+    }
 
     /* Toast */
     .toast {
@@ -533,14 +656,14 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Column widths (7 cols: Company+Score, Desc, Pain, Rec, ICP, Star, Status) ── */
+    /* ── Column widths (7 cols: Company+Score, Desc, Pain, Rec, ICP, Actions, Status) ── */
     table th:nth-child(1), table td:nth-child(1) { max-width: 280px; overflow: hidden; }
     table th:nth-child(2), table td:nth-child(2) { max-width: 180px; }
     table th:nth-child(3), table td:nth-child(3) { min-width: 280px; max-width: 380px; }
     table th:nth-child(4), table td:nth-child(4) { min-width: 200px; max-width: 280px; }
     table th:nth-child(5), table td:nth-child(5) { max-width: 180px; }
-    table th:nth-child(6), table td:nth-child(6) { width: 38px; text-align: center; padding: 2px 0; }
-    table th:nth-child(7), table td:nth-child(7) { width: 100px; }
+    table th:nth-child(6), table td:nth-child(6) { width: 52px; text-align: center; padding: 4px 4px; }
+    table th:nth-child(7), table td:nth-child(7) { width: 130px; }
 
     /* Inline score badge inside company cell */
     .score.score-inline { width: 28px; height: 28px; font-size: 13px; flex-shrink: 0; margin-left: 4px; }
@@ -813,7 +936,11 @@
         <option value="">All</option>
         <option value="new">New</option>
         <option value="contacted">Contacted</option>
+        <option value="meeting_booked">Meeting Booked</option>
         <option value="qualified">Qualified</option>
+        <option value="poc_active">POC Active</option>
+        <option value="closed_won">Closed Won</option>
+        <option value="closed_lost">Closed Lost</option>
         <option value="disqualified">Disqualified</option>
       </select>
     </div>
@@ -822,6 +949,13 @@
       <label>Industry</label>
       <select id="industry-filter" onchange="applyClientFilters()" style="max-width:140px">
         <option value="">All</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>Stack</label>
+      <select id="stack-filter" onchange="applyClientFilters()" style="max-width:160px">
+        <option value="">All Stacks</option>
       </select>
     </div>
 
@@ -841,6 +975,7 @@
       <div class="user-profile" id="user-profile">
         <img class="user-avatar" id="user-avatar" src="" alt="">
         <span class="user-name" id="user-name"></span>
+        <a class="signout-link" href="/admin" style="margin-right:4px">📊 Admin</a>
         <a class="signout-link" href="/auth/logout">Sign out</a>
       </div>
     </div>
@@ -855,9 +990,9 @@
       <span class="stat-val hot" id="s-hot">—</span>
       <span class="stat-label">Hot (8–10)</span>
     </div>
-    <div class="stat">
-      <span class="stat-val green" id="s-contacted">—</span>
-      <span class="stat-label">Contacted</span>
+    <div class="stat" style="flex:1;align-items:flex-start">
+      <div id="pipeline-funnel" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:22px"></div>
+      <span class="stat-label">Pipeline</span>
     </div>
     <div class="stat">
       <span class="stat-val" id="s-avg">—</span>
@@ -906,6 +1041,7 @@
         <option value="">Loading…</option>
       </select>
       <button class="lists-export-btn" onclick="exportListsCSV()">&#8659; CSV</button>
+      <button class="lists-export-btn" onclick="exportListsSheets()" style="color:#22c55e;border-color:rgba(34,197,94,0.4)">📊 Sheets</button>
       <button class="export-btn" onclick="hideListsView()" style="margin-left:4px">&#10005; Close</button>
     </div>
     <div class="lists-stats" id="lists-stats-bar">
@@ -946,6 +1082,34 @@
 <script>
   const BASE_PATH = window.location.pathname.replace(/\/$/, '').replace(/\/[^\/]*$/, '') || '';
 
+  // ── Status helpers ────────────────────────────────────────────────────
+  const STATUS_DEFS = [
+    ['new',           'New'],
+    ['contacted',     'Contacted ✓'],
+    ['meeting_booked','Meeting Booked 📅'],
+    ['qualified',     'Qualified ⭐'],
+    ['poc_active',    'POC Active 🔬'],
+    ['closed_won',    'Closed Won 🎉'],
+    ['closed_lost',   'Closed Lost'],
+    ['disqualified',  'Disqualified'],
+  ];
+  function statusOptions(current) {
+    return STATUS_DEFS.map(function(sv) {
+      return '<option value="'+sv[0]+'"'+(current===sv[0]?' selected':'')+'>'+sv[1]+'</option>';
+    }).join('');
+  }
+
+  // ── Copy to clipboard ─────────────────────────────────────────────────
+  async function copyText(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.innerHTML;
+      btn.innerHTML = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.innerHTML = orig; btn.classList.remove('copied'); }, 1500);
+    } catch(e) {}
+  }
+
   // ── State ─────────────────────────────────────────────────────────────
   let listsMode    = false;
   let myTargetIds  = new Set();
@@ -956,7 +1120,15 @@
   let allSummary        = [];
   let sortCol = 'score';
   let sortDir = -1;
-  let quickFilterMin = null;
+  let quickFilterMin    = null;
+  let currentStackFilter = null;
+  const briefCache = new Map();
+
+  // ── Stack helper ──────────────────────────────────────────────────────
+  function getStack(lead) {
+    const m = (lead.tidb_pain || '').match(/\[Stack:\s*([^\]]+)\]/i);
+    return m ? m[1].trim() : null;
+  }
 
   // ── API cache (5 min TTL) ─────────────────────────────────────────────
   const _apiCache = new Map();
@@ -1002,14 +1174,41 @@
       const btn = document.getElementById('sidebar-toggle');
       if (btn) btn.textContent = '▶';
     }
-    [allRegions, allSummary] = await Promise.all([
+    const [_regions, _summary] = await Promise.all([
       cachedFetch(BASE_PATH + '/api/regions'),
       cachedFetch(BASE_PATH + '/api/summary'),
     ]);
+    allRegions = _regions;
+    allSummary = Array.isArray(_summary) ? _summary : (_summary.countries || []);
     buildSidebar();
     loadCurrentUser();
+    loadStacks();
     await loadLeads();
+    // Feature 2: open lead detail if URL contains /lead/{id} or ?lead={id}
+    const pathM = window.location.pathname.match(/\/lead\/(\d+)/);
+    const qM    = new URLSearchParams(window.location.search).get('lead');
+    const linkedId = pathM ? parseInt(pathM[1]) : (qM ? parseInt(qM) : null);
+    if (linkedId) {
+      fetch(BASE_PATH + '/api/leads/' + linkedId)
+        .then(function(r){ return r.json(); })
+        .then(function(lead){ openLeadDetail(lead); })
+        .catch(function(){});
+    }
   });
+
+  async function loadStacks() {
+    try {
+      const stacks = await cachedFetch(BASE_PATH + '/api/stacks');
+      const sel = document.getElementById('stack-filter');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">All Stacks</option>';
+      stacks.forEach(function(s) {
+        const opt = document.createElement('option');
+        opt.value = s.stack; opt.textContent = s.stack + ' (' + s.count + ')';
+        sel.appendChild(opt);
+      });
+    } catch(e) {}
+  }
 
   // ── Geo switcher ─────────────────────────────────────────────────────
   function setGeo(geo) {
@@ -1169,9 +1368,11 @@
   // ── Client-side filtering ─────────────────────────────────────────────
   function applyClientFilters() {
     const industry = document.getElementById('industry-filter').value;
+    const stackSel = (document.getElementById('stack-filter') || {}).value || '';
     let filtered = currentLeads;
     if (selectedCountries.size > 0) filtered = filtered.filter(l => selectedCountries.has(l.country));
-    if (industry)                    filtered = filtered.filter(l => l.industry === industry);
+    if (industry)   filtered = filtered.filter(l => l.industry === industry);
+    if (stackSel)   filtered = filtered.filter(l => { const s = getStack(l); return s && s.toLowerCase() === stackSel.toLowerCase(); });
     if (quickFilterMin !== null) {
       const max = quickFilterMin + 1;
       filtered = filtered.filter(l => l.fit_score >= quickFilterMin && l.fit_score <= max);
@@ -1292,7 +1493,7 @@
       fetch(BASE_PATH + '/api/regions' + bust).then(r => r.json()),
       fetch(BASE_PATH + '/api/summary' + bust).then(r => r.json()),
     ]);
-    allRegions = r; allSummary = s;
+    allRegions = r; allSummary = Array.isArray(s) ? s : (s.countries || []);
     buildSidebar(); await loadLeads(); showToast('Data refreshed.');
   }
 
@@ -1318,6 +1519,7 @@
                 ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
                 ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
               </div>
+              ${getStack(lead) ? `<div class="company-meta" style="margin-top:2px"><span class="stack-pill">🔧 ${esc(getStack(lead))}</span></div>` : ''}
               <div class="company-meta" style="margin-top:2px">
                 ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
               </div>
@@ -1333,17 +1535,15 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
+        <td class="action-td" style="text-align:center;padding:4px 4px"></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
-            <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
-            <option value="contacted"    ${lead.status==='contacted'    ? 'selected':''}>Contacted ✓</option>
-            <option value="qualified"    ${lead.status==='qualified'    ? 'selected':''}>Qualified ⭐</option>
-            <option value="disqualified" ${lead.status==='disqualified' ? 'selected':''}>Disqualified</option>
+            ${statusOptions(lead.status)}
           </select>
         </td>
       `;
       tbody.appendChild(tr);
-      insertStarCell(tr, lead);
+      insertActionButtons(tr, lead);
     }
   }
 
@@ -1361,16 +1561,18 @@
     const painText  = lead.tidb_pain     || '—';
     const ucText    = lead.tidb_use_case || '';
     return `
-      <div class="pain-section">
+      <div class="pain-section copy-wrap">
         <div class="pain-label pain-color">Pain</div>
         <div class="pain-body" id="${painId}">${esc(painText)}</div>
         ${painText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${painId}', this)">Show more</button>` : ''}
+        <button class="copy-btn" data-copy="${esc(painText)}" onclick="copyText(this.dataset.copy,this)" title="Copy">📋</button>
       </div>
       ${ucText ? `
-      <div class="pain-section">
+      <div class="pain-section copy-wrap">
         <div class="pain-label use-case-color">Use case</div>
         <div class="pain-body" id="${usecaseId}">${esc(ucText)}</div>
         ${ucText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${usecaseId}', this)">Show more</button>` : ''}
+        <button class="copy-btn" data-copy="${esc(ucText)}" onclick="copyText(this.dataset.copy,this)" title="Copy">📋</button>
       </div>` : ''}
     `;
   }
@@ -1381,13 +1583,20 @@
     const recId = 'rec-' + lead.id;
     let html = '';
     if (rec) {
+      html += `<div class="copy-wrap" style="position:relative">`;
       html += `<div class="pain-body" id="${recId}" style="color:var(--text)">${esc(rec)}</div>`;
       if (rec.length > 120) html += `<button class="expand-btn" onclick="toggleExpand('${recId}', this)">Show more</button>`;
+      html += `<button class="copy-btn" data-copy="${esc(rec)}" onclick="copyText(this.dataset.copy,this)" title="Copy">📋</button>`;
+      html += `</div>`;
     }
     if (cases.length) {
       html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">';
       for (const cs of cases) {
+        const csText = cs.title + ' (' + cs.similarity + '%)';
+        html += `<div class="copy-wrap" style="position:relative">`;
         html += `<a href="${esc(cs.url)}" target="_blank" rel="noopener" class="contact-tag" style="font-size:10px;white-space:normal;line-height:1.3">${esc(cs.title)} <span style="opacity:0.6">${cs.similarity}%</span></a>`;
+        html += `<button class="copy-btn" data-copy="${esc(csText)}" onclick="copyText(this.dataset.copy,this)" title="Copy" style="top:2px">📋</button>`;
+        html += `</div>`;
       }
       html += '</div>';
     }
@@ -1419,38 +1628,49 @@
   function updateStats(leads) {
     const total     = leads.length;
     const hot       = leads.filter(l => l.fit_score >= 8).length;
-    const contacted = leads.filter(l => l.status === 'contacted' || l.status === 'qualified').length;
     const avg       = total ? (leads.reduce((s,l) => s + l.fit_score, 0) / total).toFixed(1) : '—';
     const countries = new Set(leads.map(l => l.country)).size;
     document.getElementById('s-total').textContent     = total;
     document.getElementById('s-hot').textContent       = hot;
-    document.getElementById('s-contacted').textContent = contacted;
     document.getElementById('s-avg').textContent       = avg;
     document.getElementById('s-countries').textContent = countries;
+
+    const statusCounts = {};
+    leads.forEach(l => { const s = l.status || 'new'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+    const pipelineOrder = [
+      ['new',           'New',       '#888'],
+      ['contacted',     'Contacted', '#22d3ee'],
+      ['meeting_booked','Meeting',   '#fbbf24'],
+      ['qualified',     'Qualified', '#fb923c'],
+      ['poc_active',    'POC',       '#c084fc'],
+      ['closed_won',    'Won',       '#22c55e'],
+    ];
+    const funnelEl = document.getElementById('pipeline-funnel');
+    if (funnelEl) {
+      funnelEl.innerHTML = pipelineOrder.map(function(p, i) {
+        const n = statusCounts[p[0]] || 0;
+        const arrow = i < pipelineOrder.length - 1 ? '<span style="color:#555;margin:0 1px">›</span>' : '';
+        return '<span class="pipeline-pill" style="color:'+p[2]+';border-color:'+p[2]+'40">'+p[1]+': '+n+'</span>'+arrow;
+      }).join('');
+    }
   }
 
   async function updateStatus(leadId, sel) {
     const newStatus = sel.value;
     sel.className = 'status-select status-' + newStatus;
-    if (newStatus === 'contacted' || newStatus === 'qualified') {
+    const positiveStatuses = ['contacted','meeting_booked','qualified','poc_active','closed_won'];
+    if (positiveStatuses.includes(newStatus)) {
       const tr = sel.closest('tr');
-      tr.classList.remove('just-contacted'); void tr.offsetWidth;
-      tr.classList.add('just-contacted');
-      setTimeout(() => tr.classList.remove('just-contacted'), 1200);
+      if (tr) { tr.classList.remove('just-contacted'); void tr.offsetWidth; tr.classList.add('just-contacted'); setTimeout(() => tr.classList.remove('just-contacted'), 1200); }
     }
+    const lead = currentLeads.find(l => l.id === leadId);
+    if (lead) lead.status = newStatus;
+    updateStats(currentLeads);
     const res = await fetch(BASE_PATH + '/api/leads/' + leadId + '/status', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (!res.ok) { console.error('Status update failed', await res.text()); }
-    else {
-      let contacted = 0;
-      document.querySelectorAll('#leads-body tr').forEach(row => {
-        const s = row.querySelector('.status-select');
-        if (s && (s.value === 'contacted' || s.value === 'qualified')) contacted++;
-      });
-      document.getElementById('s-contacted').textContent = contacted;
-    }
+    if (!res.ok) console.error('Status update failed', await res.text());
   }
 
   // ── Semantic search ───────────────────────────────────────────────────
@@ -1555,6 +1775,7 @@
                 ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
                 ${sim}
               </div>
+              ${getStack(lead) ? `<div class="company-meta" style="margin-top:2px"><span class="stack-pill">🔧 ${esc(getStack(lead))}</span></div>` : ''}
               <div class="company-meta" style="margin-top:2px">
                 ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
               </div>
@@ -1570,17 +1791,15 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
+        <td class="action-td" style="text-align:center;padding:4px 4px"></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
-            <option value="new"          ${lead.status==='new'          ? 'selected':''}>New</option>
-            <option value="contacted"    ${lead.status==='contacted'    ? 'selected':''}>Contacted ✓</option>
-            <option value="qualified"    ${lead.status==='qualified'    ? 'selected':''}>Qualified ⭐</option>
-            <option value="disqualified" ${lead.status==='disqualified' ? 'selected':''}>Disqualified</option>
+            ${statusOptions(lead.status)}
           </select>
         </td>
       `;
       tbody.appendChild(tr);
-      insertStarCell(tr, lead);
+      insertActionButtons(tr, lead);
     }
   }
 
@@ -1793,16 +2012,41 @@
     const n = myTargetIds.size;
     badge.textContent = n; badge.classList.toggle('hidden', n === 0);
   }
-  function insertStarCell(tr, lead) {
-    const btn = document.createElement('button');
+  function insertActionButtons(tr, lead) {
     const starred = myTargetIds.has(lead.id);
-    btn.className = 'star-btn' + (starred ? ' starred' : '');
-    btn.dataset.leadId = lead.id;
-    btn.title = starred ? 'Remove from My Targets' : 'Add to My Targets';
-    btn.textContent = starred ? '\u2605' : '\u2606';
-    btn.onclick = function() { starBtnClick(lead); };
-    const companyCell = tr.querySelector('.company-cell');
-    companyCell.insertBefore(btn, companyCell.firstChild);
+
+    const star = document.createElement('button');
+    star.className = 'star-btn' + (starred ? ' starred' : '');
+    star.dataset.leadId = lead.id;
+    star.title = starred ? 'Remove from My Targets' : 'Add to My Targets';
+    star.textContent = starred ? '\u2605' : '\u2606';
+    star.onclick = function() { starBtnClick(lead); };
+
+    const share = document.createElement('button');
+    share.className = 'share-btn';
+    share.title = 'Copy shareable link';
+    share.textContent = '🔗';
+    share.onclick = function() { shareLink(lead.id); };
+
+    const brief = document.createElement('button');
+    brief.className = 'brief-btn';
+    brief.title = 'Generate pre-call brief';
+    brief.textContent = '💼';
+    brief.onclick = function() { openBrief(lead); };
+
+    const detail = document.createElement('button');
+    detail.className = 'brief-btn';
+    detail.title = 'View full details';
+    detail.textContent = '🔍';
+    detail.onclick = function() { openLeadDetail(lead); };
+
+    const col = document.createElement('div');
+    col.className = 'action-col';
+    col.appendChild(star); col.appendChild(share);
+    col.appendChild(brief); col.appendChild(detail);
+
+    const actionTd = tr.querySelector('.action-td');
+    if (actionTd) { actionTd.innerHTML = ''; actionTd.appendChild(col); }
   }
   async function starBtnClick(lead) {
     const u = getUsername();
@@ -1823,6 +2067,138 @@
     updateStarButtons(); updateTargetsBadge();
     if (listsMode) renderListsView();
   }
+
+  // ── Feature 2: Shareable lead URL ─────────────────────────────────────
+  function shareLink(leadId) {
+    const url = window.location.origin + '/lead/' + leadId;
+    navigator.clipboard.writeText(url).then(function() {
+      showToast('Link copied! ' + url, 'info', 4000);
+    }).catch(function() {
+      showToast('Could not copy: ' + url, 'warn', 5000);
+    });
+  }
+
+  function openLeadDetail(lead) {
+    const modal = document.getElementById('lead-detail-modal');
+    if (!modal) return;
+    const score = lead.fit_score || 0;
+    const scoreClass = score >= 9 ? 'hot' : score >= 7 ? 'warm' : score >= 5 ? 'accent' : '';
+    const stack = getStack(lead);
+    let contactHtml = (lead.contacts || []).map(function(c) {
+      const role = c.role || c; const url = c.linkedin_url || linkedInSearchUrl(role, lead.company_name);
+      return '<a class="contact-tag" href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(role)+'<span class="li-icon">in</span></a>';
+    }).join('') || '<span style="color:var(--muted);font-size:12px">—</span>';
+    let casesHtml = (lead.matched_case_studies || []).map(function(cs) {
+      return '<a href="'+esc(cs.url)+'" target="_blank" rel="noopener" class="contact-tag" style="font-size:11px">'+esc(cs.title)+' <span style="opacity:0.6">'+cs.similarity+'%</span></a>';
+    }).join('') || '';
+
+    modal.querySelector('.ld-header-info').innerHTML =
+      '<div class="ld-company"><a href="'+esc(lead.website||'#')+'" target="_blank" rel="noopener">'+esc(lead.company_name)+'</a></div>' +
+      '<div class="ld-meta">' +
+        (lead.industry ? '<span class="industry-pill">'+esc(lead.industry)+'</span>' : '') +
+        (lead.company_size && lead.company_size!=='Unknown' ? '<span class="size-pill">👥 '+esc(lead.company_size)+'</span>' : '') +
+        (stack ? '<span class="stack-pill">🔧 '+esc(stack)+'</span>' : '') +
+        '<span style="color:var(--muted);font-size:12px">'+flag(lead.country)+' '+esc(lead.country||'')+(lead.region?' · '+esc(lead.region):'')+'</span>' +
+      '</div>';
+    modal.querySelector('.ld-score').className = 'score score-'+score;
+    modal.querySelector('.ld-score').textContent = score;
+
+    const body = modal.querySelector('.ld-body');
+    body.innerHTML =
+      section('Description', '<p class="primary">'+esc(lead.description||'—')+'</p>') +
+      section('TiDB Pain', '<p>'+esc(lead.tidb_pain||'—')+'</p>') +
+      (lead.tidb_use_case ? section('Use Case', '<p>'+esc(lead.tidb_use_case)+'</p>') : '') +
+      (lead.outreach_recommendation ? section('Outreach Recommendation', '<p class="primary">'+esc(lead.outreach_recommendation)+'</p>') : '') +
+      section('ICP Contacts', '<div class="contacts" style="flex-wrap:wrap;gap:5px">'+contactHtml+'</div>') +
+      (casesHtml ? section('Case Study Matches', '<div class="contacts" style="flex-wrap:wrap;gap:5px">'+casesHtml+'</div>') : '');
+
+    const shareBtn = modal.querySelector('#ld-share-btn');
+    if (shareBtn) shareBtn.onclick = function() { shareLink(lead.id); };
+    const briefBtn = modal.querySelector('#ld-brief-btn');
+    if (briefBtn) briefBtn.onclick = function() { closeLeadDetail(); openBrief(lead); };
+
+    document.getElementById('lead-detail-overlay').classList.add('open');
+  }
+
+  function section(title, content) {
+    return '<div class="ld-section"><div class="ld-section-title">'+title+'</div>'+content+'</div>';
+  }
+
+  function closeLeadDetail() {
+    document.getElementById('lead-detail-overlay').classList.remove('open');
+  }
+
+  // ── Feature 5: Pre-call brief ──────────────────────────────────────────
+  async function openBrief(lead) {
+    const overlay = document.getElementById('brief-overlay');
+    if (!overlay) return;
+    const header = overlay.querySelector('.brief-header h3');
+    header.textContent = '💼 Brief: ' + (lead.company_name || '');
+    const body = overlay.querySelector('.brief-body');
+    body.innerHTML = '<div class="brief-loading"><div class="spinner"></div>Generating pre-call brief with Claude…</div>';
+    const footer = overlay.querySelector('.brief-footer');
+    footer.querySelector('#brief-copy-btn').style.display = 'none';
+    footer.querySelector('#brief-gmail-btn').style.display = 'none';
+    overlay.classList.add('open');
+
+    if (briefCache.has(lead.id)) {
+      renderBrief(briefCache.get(lead.id), lead, body, footer);
+      return;
+    }
+    try {
+      const resp = await fetch(BASE_PATH + '/api/leads/' + lead.id + '/brief', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      briefCache.set(lead.id, data);
+      renderBrief(data, lead, body, footer);
+    } catch(e) {
+      body.innerHTML = '<div style="color:var(--red);padding:20px;font-size:13px">⚠ Failed to generate brief: ' + e.message + '</div>';
+    }
+  }
+
+  function renderBrief(data, lead, body, footer) {
+    const pains    = Array.isArray(data.pains)     ? data.pains     : [];
+    const questions= Array.isArray(data.questions) ? data.questions : [];
+    body.innerHTML =
+      briefSec('Prospect Snapshot', '<p>'+esc(data.snapshot||'')+'</p>') +
+      briefSec('Pain Hypotheses', pains.length ? '<ol>'+pains.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ol>' : '<p style="color:var(--muted)">—</p>') +
+      briefSec('Discovery Questions', questions.length ? '<ol>'+questions.map(function(q){return '<li>'+esc(q)+'</li>';}).join('')+'</ol>' : '<p style="color:var(--muted)">—</p>') +
+      briefSec('Opening Line', '<p style="font-style:italic;font-size:14px">'+esc(data.opening_line||'')+'</p>') +
+      (data.competitive ? briefSec('Competitive Positioning', '<p>'+esc(data.competitive)+'</p>') : '') +
+      briefSec('Email Draft',
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Subject: '+esc(data.email_subject||'')+'</div>' +
+        '<div class="brief-email-box">'+esc(data.email_body||'')+'</div>');
+
+    const copyBtn = footer.querySelector('#brief-copy-btn');
+    const gmailBtn = footer.querySelector('#brief-gmail-btn');
+    copyBtn.style.display = ''; gmailBtn.style.display = '';
+
+    copyBtn.onclick = function() {
+      const txt = [
+        'PRE-CALL BRIEF: ' + (lead.company_name||''),
+        '', 'PROSPECT SNAPSHOT', data.snapshot||'',
+        '', 'PAIN HYPOTHESES', pains.map(function(p,i){return (i+1)+'. '+p;}).join('\n'),
+        '', 'DISCOVERY QUESTIONS', questions.map(function(q,i){return (i+1)+'. '+q;}).join('\n'),
+        '', 'OPENING LINE', data.opening_line||'',
+        '', 'COMPETITIVE POSITIONING', data.competitive||'',
+        '', 'EMAIL DRAFT', 'Subject: '+(data.email_subject||''), '', data.email_body||'',
+      ].join('\n');
+      navigator.clipboard.writeText(txt).then(function(){ showToast('Brief copied to clipboard!'); }).catch(function(){});
+    };
+    gmailBtn.onclick = function() {
+      const url = 'mailto:?subject=' + encodeURIComponent(data.email_subject||'') + '&body=' + encodeURIComponent(data.email_body||'');
+      window.open(url, '_blank');
+    };
+  }
+
+  function briefSec(title, content) {
+    return '<div class="brief-section"><div class="brief-section-title">'+title+'</div>'+content+'</div>';
+  }
+
+  function closeBrief() { document.getElementById('brief-overlay').classList.remove('open'); }
 
   async function showListsView() {
     const u = getUsername();
@@ -1905,10 +2281,7 @@
       td4.appendChild(scoreSpan); tr.appendChild(td4);
       const td5 = document.createElement('td');
       const statusSel = document.createElement('select'); statusSel.className = 'status-select status-' + lead.status;
-      [['new','New'],['contacted','Contacted ✓'],['qualified','Qualified ⭐'],['disqualified','Disqualified']].forEach(function(sv) {
-        const opt = document.createElement('option'); opt.value = sv[0]; opt.textContent = sv[1];
-        if (lead.status === sv[0]) opt.selected = true; statusSel.appendChild(opt);
-      });
+      statusSel.innerHTML = statusOptions(lead.status);
       (function(lid,sel2){sel2.onchange=function(){updateStatus(lid,sel2);};})(lead.id, statusSel);
       td5.appendChild(statusSel); tr.appendChild(td5);
       const td6 = document.createElement('td');
@@ -1949,22 +2322,66 @@
     updateStarButtons(); updateTargetsBadge(); renderListsView();
     showToast('Removed from My Targets');
   }
+  function _buildListsCSV() {
+    const rows = [['Company','Website','Country','Region','Industry','TiDB Pain','TiDB Use Case','Recommendation','Score','Status','Notes','Added']];
+    listsLeads.forEach(function(l){
+      rows.push([l.company_name||'',l.website||'',l.country||'',l.region||'',l.industry||'',l.tidb_pain||'',l.tidb_use_case||'',l.outreach_recommendation||'',l.fit_score||'',l.status||'',l.notes||'',(l.added_at||'').slice(0,10)]);
+    });
+    return rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+  }
   function exportListsCSV() {
     if (!listsLeads.length) return showToast('No targets to export.', 'warn');
-    const rows = [['Company','Website','Country','Region','Industry','TiDB Pain','TiDB Use Case','Score','Status','Notes','Added']];
-    listsLeads.forEach(function(l){
-      rows.push([l.company_name||'',l.website||'',l.country||'',l.region||'',l.industry||'',l.tidb_pain||'',l.tidb_use_case||'',l.fit_score||'',l.status||'',l.notes||'',(l.added_at||'').slice(0,10)]);
-    });
-    const csv = rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
-    const blob = new Blob([csv],{type:'text/csv'});
+    const blob = new Blob([_buildListsCSV()],{type:'text/csv'});
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'),{href:url,download:'my-targets.csv'});
     a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000);
     showToast('Downloaded ' + listsLeads.length + ' targets as CSV.');
   }
+  function exportListsSheets() {
+    if (!listsLeads.length) return showToast('No targets to export.', 'warn');
+    const blob = new Blob([_buildListsCSV()],{type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'),{href:url,download:'my-targets.csv'});
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); window.open('https://sheets.new', '_blank'); }, 300);
+    showToast('CSV downloaded — in the new Sheet: File → Import → Upload the file.', 'info', 6000);
+  }
 
 
 </script>
+
+<!-- ── Lead Detail modal (Feature 2) ────────────────────────────────── -->
+<div id="lead-detail-overlay" onclick="if(event.target===this)closeLeadDetail()">
+  <div id="lead-detail-modal">
+    <div class="ld-header">
+      <div class="ld-header-info"></div>
+      <span class="score ld-score" style="font-size:16px;width:38px;height:38px;flex-shrink:0">—</span>
+      <button class="modal-close" onclick="closeLeadDetail()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 4px">✕</button>
+    </div>
+    <div class="ld-body"></div>
+    <div class="ld-footer">
+      <button id="ld-share-btn" class="export-btn" style="font-size:12px">🔗 Copy Link</button>
+      <button id="ld-brief-btn" class="export-btn" style="font-size:12px">💼 Generate Brief</button>
+      <button class="export-btn" onclick="closeLeadDetail()" style="margin-left:auto">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Brief modal (Feature 5) ──────────────────────────────────────── -->
+<div id="brief-overlay" onclick="if(event.target===this)closeBrief()">
+  <div id="brief-modal">
+    <div class="brief-header">
+      <h3>💼 Pre-call Brief</h3>
+      <button class="modal-close" onclick="closeBrief()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 4px">✕</button>
+    </div>
+    <div class="brief-body"></div>
+    <div class="brief-footer">
+      <button class="brief-btn-primary" id="brief-copy-btn" style="display:none">📋 Copy All</button>
+      <button class="brief-btn-gmail" id="brief-gmail-btn" style="display:none">✉ Open in Gmail</button>
+      <button class="export-btn" onclick="closeBrief()" style="margin-left:auto">✕ Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Add Lead modal ───────────────────────────────────────────────── -->
 <div id="add-lead-overlay">
