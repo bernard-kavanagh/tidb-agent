@@ -760,25 +760,38 @@ async def api_generate_brief(
         conn.close()
 
     prompt = (
-        "You are a senior sales strategist for TiDB Cloud. "
-        "Generate a pre-call brief for this prospect.\n\n"
+        "You are writing a short, warm outreach email from a Solutions Architect at TiDB Cloud (PingCAP). "
+        "This is NOT a sales pitch. This is a genuine offer to share insights.\n\n"
         f"Company: {lead.get('company_name', '')}\n"
         f"Website: {lead.get('website', '')}\n"
         f"Industry: {lead.get('industry', '')}\n"
         f"Country: {lead.get('country', '')}\n"
-        f"Company Size: {lead.get('company_size', '')}\n"
-        f"Fit Score: {lead.get('fit_score', '')}/10\n"
         f"Pain: {lead.get('tidb_pain', '')}\n"
-        f"Use Case: {lead.get('tidb_use_case', '')}\n"
         f"Outreach Recommendation: {lead.get('outreach_recommendation', '')}\n\n"
-        "Generate a brief with these sections:\n"
-        "1. PROSPECT SNAPSHOT — 3 sentences on who they are and what they do\n"
-        "2. PAIN HYPOTHESES — 3 ranked pains with TiDB connection for each\n"
-        "3. DISCOVERY QUESTIONS — 5 questions to ask on the call, each labeled with what it qualifies (budget, timeline, authority, need)\n"
-        "4. OPENING LINE — The exact first sentence to say on the call (lead with their pain, not your product)\n"
-        "5. COMPETITIVE POSITIONING — If a competing database is detected in their stack, provide the counter-positioning\n"
-        "6. EMAIL DRAFT — A 4-sentence cold email: specific insight opener, pain statement, one-line value prop, single CTA\n\n"
-        "Return as JSON with keys: snapshot, pains (array), questions (array), opening_line, competitive, email_subject, email_body"
+        "Write a cold outreach email that follows these rules:\n"
+        "1. SUBJECT LINE: Short, specific to their company. No generic subjects. Reference something they actually do.\n"
+        "2. OPENING (1 sentence): Acknowledge a specific achievement or strength of their company. Be genuine — reference their product, scale, or market position.\n"
+        "3. BRIDGE (1 sentence): Connect their achievement to a challenge you have seen teams like theirs face. Do NOT name the challenge as a problem they have — frame it as a pattern you observe in the industry.\n"
+        "4. OFFER (1 sentence): Position a call as offering value — share what you have learned from similar companies, not sell a product. Example: I have been working with teams building [similar thing] and would love to share what we have learned about [relevant topic] — would 20 minutes be useful?\n"
+        "5. SIGN-OFF: Warm, first-name basis. No corporate closing.\n\n"
+        "Rules:\n"
+        "- Maximum 5 sentences total. Short paragraphs.\n"
+        "- Tone: friendly, peer-to-peer, curious. Like a colleague reaching out, not a vendor.\n"
+        "- Do NOT mention TiDB, PingCAP, or any product by name in the email body.\n"
+        "- Do NOT use words like: synergy, leverage, optimize, solution, innovative, cutting-edge, pipeline, ROI\n"
+        "- Do NOT describe their problems back to them. They know their problems.\n"
+        "- Do NOT be technical. No mention of databases, ACID, vectors, tokens, or infrastructure.\n"
+        "- The email should make them think: this person understands what we do and might have something useful to share.\n\n"
+        "Also generate:\n"
+        "- A brief prospect snapshot (2 sentences: who they are, what is impressive about them)\n"
+        "- 3 discovery questions to ask on the call (business-focused, not technical)\n\n"
+        'Return as JSON:\n'
+        '{\n'
+        '  "snapshot": "...",\n'
+        '  "questions": ["...", "...", "..."],\n'
+        '  "email_subject": "...",\n'
+        '  "email_body": "..."\n'
+        '}'
     )
     client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     message = client.messages.create(
@@ -792,8 +805,7 @@ async def api_generate_brief(
         brief = _json.loads(json_match.group()) if json_match else _json.loads(content)
     except Exception:
         brief = {
-            "snapshot": content, "pains": [], "questions": [],
-            "opening_line": "", "competitive": "",
+            "snapshot": content, "questions": [],
             "email_subject": "", "email_body": "",
         }
     return brief

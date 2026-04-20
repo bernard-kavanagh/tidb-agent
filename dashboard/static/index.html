@@ -447,6 +447,12 @@
     .share-btn:hover { color: var(--accent); transform: scale(1.15); }
     .brief-btn:hover { color: var(--warm); transform: scale(1.15); }
 
+    /* Company action links */
+    .company-actions { display: none; gap: 8px; margin-top: 4px; }
+    .company-cell:hover .company-actions { display: flex; }
+    .action-link { font-size: 11px; color: rgba(255,255,255,0.4); cursor: pointer; white-space: nowrap; transition: color 0.1s; }
+    .action-link:hover { color: rgba(255,255,255,0.75); }
+
     /* Lead detail modal */
     #lead-detail-overlay {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -455,7 +461,7 @@
     #lead-detail-overlay.open { display: flex; }
     #lead-detail-modal {
       background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      width: 720px; max-width: 96vw; max-height: 88vh;
+      width: 720px; max-width: 96vw; max-height: 85vh;
       display: flex; flex-direction: column; overflow: hidden;
     }
     .ld-header {
@@ -656,14 +662,13 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Column widths (7 cols: Company+Score, Desc, Pain, Rec, ICP, Actions, Status) ── */
-    table th:nth-child(1), table td:nth-child(1) { max-width: 280px; overflow: hidden; }
+    /* ── Column widths (6 cols: Company+Score, Desc, Pain, Rec, ICP, Status) ── */
+    table th:nth-child(1), table td:nth-child(1) { max-width: 290px; overflow: hidden; }
     table th:nth-child(2), table td:nth-child(2) { max-width: 180px; }
     table th:nth-child(3), table td:nth-child(3) { min-width: 280px; max-width: 380px; }
     table th:nth-child(4), table td:nth-child(4) { min-width: 200px; max-width: 280px; }
     table th:nth-child(5), table td:nth-child(5) { max-width: 180px; }
-    table th:nth-child(6), table td:nth-child(6) { width: 52px; text-align: center; padding: 4px 4px; }
-    table th:nth-child(7), table td:nth-child(7) { width: 130px; }
+    table th:nth-child(6), table td:nth-child(6) { width: 130px; }
 
     /* Inline score badge inside company cell */
     .score.score-inline { width: 28px; height: 28px; font-size: 13px; flex-shrink: 0; margin-left: 4px; }
@@ -953,13 +958,6 @@
     </div>
 
     <div class="filter-group">
-      <label>Stack</label>
-      <select id="stack-filter" onchange="applyClientFilters()" style="max-width:160px">
-        <option value="">All Stacks</option>
-      </select>
-    </div>
-
-    <div class="filter-group">
       <label>Min score</label>
       <input type="range" id="score-filter" min="1" max="10" value="1"
              oninput="document.getElementById('score-label').textContent=this.value; loadLeads()">
@@ -1026,7 +1024,6 @@
           <th>TiDB Pain / Use Case</th>
           <th>Recommendation</th>
           <th>ICP Contacts</th>
-          <th></th>
           <th class="sortable" onclick="sortByCol('status')">Status <span class="sort-arrow" id="sa-status"></span></th>
         </tr>
       </thead>
@@ -1182,7 +1179,6 @@
     allSummary = Array.isArray(_summary) ? _summary : (_summary.countries || []);
     buildSidebar();
     loadCurrentUser();
-    loadStacks();
     await loadLeads();
     // Feature 2: open lead detail if URL contains /lead/{id} or ?lead={id}
     const pathM = window.location.pathname.match(/\/lead\/(\d+)/);
@@ -1190,25 +1186,14 @@
     const linkedId = pathM ? parseInt(pathM[1]) : (qM ? parseInt(qM) : null);
     if (linkedId) {
       fetch(BASE_PATH + '/api/leads/' + linkedId)
-        .then(function(r){ return r.json(); })
-        .then(function(lead){ openLeadDetail(lead); })
-        .catch(function(){});
+        .then(function(r) {
+          if (!r.ok) { openLeadNotFound(); return null; }
+          return r.json();
+        })
+        .then(function(lead) { if (lead) openLeadDetail(lead); })
+        .catch(function() { openLeadNotFound(); });
     }
   });
-
-  async function loadStacks() {
-    try {
-      const stacks = await cachedFetch(BASE_PATH + '/api/stacks');
-      const sel = document.getElementById('stack-filter');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">All Stacks</option>';
-      stacks.forEach(function(s) {
-        const opt = document.createElement('option');
-        opt.value = s.stack; opt.textContent = s.stack + ' (' + s.count + ')';
-        sel.appendChild(opt);
-      });
-    } catch(e) {}
-  }
 
   // ── Geo switcher ─────────────────────────────────────────────────────
   function setGeo(geo) {
@@ -1368,11 +1353,9 @@
   // ── Client-side filtering ─────────────────────────────────────────────
   function applyClientFilters() {
     const industry = document.getElementById('industry-filter').value;
-    const stackSel = (document.getElementById('stack-filter') || {}).value || '';
     let filtered = currentLeads;
     if (selectedCountries.size > 0) filtered = filtered.filter(l => selectedCountries.has(l.country));
     if (industry)   filtered = filtered.filter(l => l.industry === industry);
-    if (stackSel)   filtered = filtered.filter(l => { const s = getStack(l); return s && s.toLowerCase() === stackSel.toLowerCase(); });
     if (quickFilterMin !== null) {
       const max = quickFilterMin + 1;
       filtered = filtered.filter(l => l.fit_score >= quickFilterMin && l.fit_score <= max);
@@ -1504,9 +1487,11 @@
     for (const lead of leads) {
       const tr = document.createElement('tr');
       tr.dataset.leadId = lead.id;
+      const starred = myTargetIds.has(lead.id);
       tr.innerHTML = `
         <td>
           <div class="company-cell">
+            <button class="star-btn${starred ? ' starred' : ''}" data-lead-id="${lead.id}" onclick="starById(${lead.id})" title="${starred ? 'Remove from My Targets' : 'Add to My Targets'}">${starred ? '★' : '☆'}</button>
             ${logoCell(lead)}
             <div class="company-info" style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1523,6 +1508,11 @@
               <div class="company-meta" style="margin-top:2px">
                 ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
               </div>
+              <div class="company-actions">
+                <span class="action-link" onclick="copyShareLink(${lead.id})" title="Copy share link">🔗 Share</span>
+                <span class="action-link" onclick="generateBrief(${lead.id})" title="Generate outreach email">✉️ Email</span>
+                <span class="action-link" onclick="viewFullDetails(${lead.id})" title="View all details">📄 Details</span>
+              </div>
             </div>
           </div>
         </td>
@@ -1535,7 +1525,6 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
-        <td class="action-td" style="text-align:center;padding:4px 4px"></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
             ${statusOptions(lead.status)}
@@ -1543,7 +1532,6 @@
         </td>
       `;
       tbody.appendChild(tr);
-      insertActionButtons(tr, lead);
     }
   }
 
@@ -1560,20 +1548,22 @@
     const usecaseId = 'uc-'   + lead.id;
     const painText  = lead.tidb_pain     || '—';
     const ucText    = lead.tidb_use_case || '';
+    const combined  = 'PAIN:\n' + (lead.tidb_pain || '') + (ucText ? '\n\nUSE CASE:\n' + ucText : '');
     return `
-      <div class="pain-section copy-wrap">
-        <div class="pain-label pain-color">Pain</div>
-        <div class="pain-body" id="${painId}">${esc(painText)}</div>
-        ${painText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${painId}', this)">Show more</button>` : ''}
-        <button class="copy-btn" data-copy="${esc(painText)}" onclick="copyText(this.dataset.copy,this)" title="Copy">📋</button>
+      <div class="copy-wrap">
+        <button class="copy-btn" data-copy="${esc(combined)}" onclick="copyText(this.dataset.copy,this)" title="Copy pain + use case">📋</button>
+        <div class="pain-section">
+          <div class="pain-label pain-color">Pain</div>
+          <div class="pain-body" id="${painId}">${esc(painText)}</div>
+          ${painText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${painId}', this)">Show more</button>` : ''}
+        </div>
+        ${ucText ? `
+        <div class="pain-section">
+          <div class="pain-label use-case-color">Use case</div>
+          <div class="pain-body" id="${usecaseId}">${esc(ucText)}</div>
+          ${ucText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${usecaseId}', this)">Show more</button>` : ''}
+        </div>` : ''}
       </div>
-      ${ucText ? `
-      <div class="pain-section copy-wrap">
-        <div class="pain-label use-case-color">Use case</div>
-        <div class="pain-body" id="${usecaseId}">${esc(ucText)}</div>
-        ${ucText.length > 100 ? `<button class="expand-btn" onclick="toggleExpand('${usecaseId}', this)">Show more</button>` : ''}
-        <button class="copy-btn" data-copy="${esc(ucText)}" onclick="copyText(this.dataset.copy,this)" title="Copy">📋</button>
-      </div>` : ''}
     `;
   }
 
@@ -1670,7 +1660,13 @@
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (!res.ok) console.error('Status update failed', await res.text());
+    if (!res.ok) { console.error('Status update failed', await res.text()); }
+    else {
+      const prefix = BASE_PATH + '/api/leads';
+      for (const key of [..._apiCache.keys()]) {
+        if (key.startsWith(prefix)) _apiCache.delete(key);
+      }
+    }
   }
 
   // ── Semantic search ───────────────────────────────────────────────────
@@ -1761,9 +1757,11 @@
         : (lead.similarity_pct != null ? '<span class="similarity-pill">' + lead.similarity_pct + '% match</span>' : '');
       const tr = document.createElement('tr');
       tr.dataset.leadId = lead.id;
+      const starred = myTargetIds.has(lead.id);
       tr.innerHTML = `
         <td>
           <div class="company-cell">
+            <button class="star-btn${starred ? ' starred' : ''}" data-lead-id="${lead.id}" onclick="starById(${lead.id})" title="${starred ? 'Remove from My Targets' : 'Add to My Targets'}">${starred ? '★' : '☆'}</button>
             ${logoCell(lead)}
             <div class="company-info" style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1779,6 +1777,11 @@
               <div class="company-meta" style="margin-top:2px">
                 ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
               </div>
+              <div class="company-actions">
+                <span class="action-link" onclick="copyShareLink(${lead.id})" title="Copy share link">🔗 Share</span>
+                <span class="action-link" onclick="generateBrief(${lead.id})" title="Generate outreach email">✉️ Email</span>
+                <span class="action-link" onclick="viewFullDetails(${lead.id})" title="View all details">📄 Details</span>
+              </div>
             </div>
           </div>
         </td>
@@ -1791,7 +1794,6 @@
         <td><div class="pain-cell">${painCell(lead)}</div></td>
         <td><div class="pain-cell">${recCell(lead)}</div></td>
         <td><div class="contacts">${contactTags(lead)}</div></td>
-        <td class="action-td" style="text-align:center;padding:4px 4px"></td>
         <td>
           <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
             ${statusOptions(lead.status)}
@@ -1799,7 +1801,6 @@
         </td>
       `;
       tbody.appendChild(tr);
-      insertActionButtons(tr, lead);
     }
   }
 
@@ -2012,41 +2013,47 @@
     const n = myTargetIds.size;
     badge.textContent = n; badge.classList.toggle('hidden', n === 0);
   }
-  function insertActionButtons(tr, lead) {
-    const starred = myTargetIds.has(lead.id);
+  function starById(id) {
+    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    if (lead) starBtnClick(lead);
+  }
 
-    const star = document.createElement('button');
-    star.className = 'star-btn' + (starred ? ' starred' : '');
-    star.dataset.leadId = lead.id;
-    star.title = starred ? 'Remove from My Targets' : 'Add to My Targets';
-    star.textContent = starred ? '\u2605' : '\u2606';
-    star.onclick = function() { starBtnClick(lead); };
+  function copyShareLink(id) { shareLink(id); }
 
-    const share = document.createElement('button');
-    share.className = 'share-btn';
-    share.title = 'Copy shareable link';
-    share.textContent = '🔗';
-    share.onclick = function() { shareLink(lead.id); };
+  function generateBrief(id) {
+    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    if (lead) openBrief(lead);
+  }
 
-    const brief = document.createElement('button');
-    brief.className = 'brief-btn';
-    brief.title = 'Generate pre-call brief';
-    brief.textContent = '💼';
-    brief.onclick = function() { openBrief(lead); };
+  function viewFullDetails(id) {
+    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    if (lead) { openLeadDetail(lead); return; }
+    fetch(BASE_PATH + '/api/leads/' + id)
+      .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function(l) { openLeadDetail(l); })
+      .catch(function() { openLeadNotFound(); });
+  }
 
-    const detail = document.createElement('button');
-    detail.className = 'brief-btn';
-    detail.title = 'View full details';
-    detail.textContent = '🔍';
-    detail.onclick = function() { openLeadDetail(lead); };
+  function copyAllDetails(id) {
+    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    if (!lead) return;
+    const txt = 'PAIN:\n' + (lead.tidb_pain || '') +
+      (lead.tidb_use_case ? '\n\nUSE CASE:\n' + lead.tidb_use_case : '') +
+      (lead.outreach_recommendation ? '\n\nRECOMMENDATION:\n' + lead.outreach_recommendation : '');
+    navigator.clipboard.writeText(txt).then(function() { showToast('Details copied!'); }).catch(function() {});
+  }
 
-    const col = document.createElement('div');
-    col.className = 'action-col';
-    col.appendChild(star); col.appendChild(share);
-    col.appendChild(brief); col.appendChild(detail);
-
-    const actionTd = tr.querySelector('.action-td');
-    if (actionTd) { actionTd.innerHTML = ''; actionTd.appendChild(col); }
+  function openLeadNotFound() {
+    const modal = document.getElementById('lead-detail-modal');
+    if (!modal) return;
+    modal.querySelector('.ld-header-info').innerHTML = '<div class="ld-company">Lead Not Found</div>';
+    const sc = modal.querySelector('.ld-score');
+    sc.textContent = '—'; sc.className = 'score';
+    modal.querySelector('.ld-body').innerHTML =
+      '<div style="padding:24px 0;color:var(--muted);font-size:14px;line-height:1.6">Lead not found. It may have been removed or the link is invalid.</div>';
+    modal.querySelector('.ld-footer').innerHTML =
+      '<button class="export-btn" onclick="closeLeadDetail()" style="margin-left:auto">✕ Close</button>';
+    document.getElementById('lead-detail-overlay').classList.add('open');
   }
   async function starBtnClick(lead) {
     const u = getUsername();
@@ -2082,7 +2089,6 @@
     const modal = document.getElementById('lead-detail-modal');
     if (!modal) return;
     const score = lead.fit_score || 0;
-    const scoreClass = score >= 9 ? 'hot' : score >= 7 ? 'warm' : score >= 5 ? 'accent' : '';
     const stack = getStack(lead);
     let contactHtml = (lead.contacts || []).map(function(c) {
       const role = c.role || c; const url = c.linkedin_url || linkedInSearchUrl(role, lead.company_name);
@@ -2103,6 +2109,9 @@
     modal.querySelector('.ld-score').className = 'score score-'+score;
     modal.querySelector('.ld-score').textContent = score;
 
+    const statusHtml = '<select class="status-select status-'+(lead.status||'new')+'" onchange="updateStatus('+lead.id+', this)">'+statusOptions(lead.status)+'</select>';
+    const cachedBrief = briefCache.get(lead.id);
+
     const body = modal.querySelector('.ld-body');
     body.innerHTML =
       section('Description', '<p class="primary">'+esc(lead.description||'—')+'</p>') +
@@ -2110,12 +2119,17 @@
       (lead.tidb_use_case ? section('Use Case', '<p>'+esc(lead.tidb_use_case)+'</p>') : '') +
       (lead.outreach_recommendation ? section('Outreach Recommendation', '<p class="primary">'+esc(lead.outreach_recommendation)+'</p>') : '') +
       section('ICP Contacts', '<div class="contacts" style="flex-wrap:wrap;gap:5px">'+contactHtml+'</div>') +
-      (casesHtml ? section('Case Study Matches', '<div class="contacts" style="flex-wrap:wrap;gap:5px">'+casesHtml+'</div>') : '');
+      (casesHtml ? section('Case Study Matches', '<div class="contacts" style="flex-wrap:wrap;gap:5px">'+casesHtml+'</div>') : '') +
+      section('Status', statusHtml) +
+      (cachedBrief ? section('Generated Email',
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:6px"><strong style="color:var(--text)">Subject:</strong> '+esc(cachedBrief.email_subject||'')+'</div>'+
+        '<div class="brief-email-box">'+esc(cachedBrief.email_body||'')+'</div>') : '');
 
-    const shareBtn = modal.querySelector('#ld-share-btn');
-    if (shareBtn) shareBtn.onclick = function() { shareLink(lead.id); };
-    const briefBtn = modal.querySelector('#ld-brief-btn');
-    if (briefBtn) briefBtn.onclick = function() { closeLeadDetail(); openBrief(lead); };
+    const starred = myTargetIds.has(lead.id);
+    modal.querySelector('.ld-footer').innerHTML =
+      '<button class="star-btn'+(starred?' starred':'')+'" data-lead-id="'+lead.id+'" onclick="starById('+lead.id+')" title="'+(starred?'Remove from My Targets':'Add to My Targets')+'" style="font-size:20px">'+(starred?'★':'☆')+'</button>' +
+      '<button class="export-btn" onclick="copyAllDetails('+lead.id+')" style="font-size:12px">📋 Copy All</button>' +
+      '<button class="export-btn" onclick="closeLeadDetail()" style="margin-left:auto">✕ Close</button>';
 
     document.getElementById('lead-detail-overlay').classList.add('open');
   }
@@ -2160,36 +2174,25 @@
   }
 
   function renderBrief(data, lead, body, footer) {
-    const pains    = Array.isArray(data.pains)     ? data.pains     : [];
-    const questions= Array.isArray(data.questions) ? data.questions : [];
+    const questions = Array.isArray(data.questions) ? data.questions : [];
     body.innerHTML =
       briefSec('Prospect Snapshot', '<p>'+esc(data.snapshot||'')+'</p>') +
-      briefSec('Pain Hypotheses', pains.length ? '<ol>'+pains.map(function(p){return '<li>'+esc(p)+'</li>';}).join('')+'</ol>' : '<p style="color:var(--muted)">—</p>') +
-      briefSec('Discovery Questions', questions.length ? '<ol>'+questions.map(function(q){return '<li>'+esc(q)+'</li>';}).join('')+'</ol>' : '<p style="color:var(--muted)">—</p>') +
-      briefSec('Opening Line', '<p style="font-style:italic;font-size:14px">'+esc(data.opening_line||'')+'</p>') +
-      (data.competitive ? briefSec('Competitive Positioning', '<p>'+esc(data.competitive)+'</p>') : '') +
-      briefSec('Email Draft',
-        '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Subject: '+esc(data.email_subject||'')+'</div>' +
-        '<div class="brief-email-box">'+esc(data.email_body||'')+'</div>');
+      briefSec('Outreach Email',
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:6px"><strong style="color:var(--text)">Subject:</strong> '+esc(data.email_subject||'')+'</div>' +
+        '<div class="brief-email-box">'+esc(data.email_body||'')+'</div>') +
+      (questions.length ? briefSec('Discovery Questions', '<ol>'+questions.map(function(q){return '<li>'+esc(q)+'</li>';}).join('')+'</ol>') : '');
 
     const copyBtn = footer.querySelector('#brief-copy-btn');
     const gmailBtn = footer.querySelector('#brief-gmail-btn');
     copyBtn.style.display = ''; gmailBtn.style.display = '';
+    copyBtn.textContent = '📋 Copy Email';
 
     copyBtn.onclick = function() {
-      const txt = [
-        'PRE-CALL BRIEF: ' + (lead.company_name||''),
-        '', 'PROSPECT SNAPSHOT', data.snapshot||'',
-        '', 'PAIN HYPOTHESES', pains.map(function(p,i){return (i+1)+'. '+p;}).join('\n'),
-        '', 'DISCOVERY QUESTIONS', questions.map(function(q,i){return (i+1)+'. '+q;}).join('\n'),
-        '', 'OPENING LINE', data.opening_line||'',
-        '', 'COMPETITIVE POSITIONING', data.competitive||'',
-        '', 'EMAIL DRAFT', 'Subject: '+(data.email_subject||''), '', data.email_body||'',
-      ].join('\n');
-      navigator.clipboard.writeText(txt).then(function(){ showToast('Brief copied to clipboard!'); }).catch(function(){});
+      const txt = 'Subject: ' + (data.email_subject || '') + '\n\n' + (data.email_body || '');
+      navigator.clipboard.writeText(txt).then(function() { showToast('Email copied to clipboard!'); }).catch(function() {});
     };
     gmailBtn.onclick = function() {
-      const url = 'mailto:?subject=' + encodeURIComponent(data.email_subject||'') + '&body=' + encodeURIComponent(data.email_body||'');
+      const url = 'https://mail.google.com/mail/?view=cm&su=' + encodeURIComponent(data.email_subject || '') + '&body=' + encodeURIComponent(data.email_body || '');
       window.open(url, '_blank');
     };
   }
@@ -2360,8 +2363,6 @@
     </div>
     <div class="ld-body"></div>
     <div class="ld-footer">
-      <button id="ld-share-btn" class="export-btn" style="font-size:12px">🔗 Copy Link</button>
-      <button id="ld-brief-btn" class="export-btn" style="font-size:12px">💼 Generate Brief</button>
       <button class="export-btn" onclick="closeLeadDetail()" style="margin-left:auto">✕ Close</button>
     </div>
   </div>
@@ -2376,8 +2377,8 @@
     </div>
     <div class="brief-body"></div>
     <div class="brief-footer">
-      <button class="brief-btn-primary" id="brief-copy-btn" style="display:none">📋 Copy All</button>
-      <button class="brief-btn-gmail" id="brief-gmail-btn" style="display:none">✉ Open in Gmail</button>
+      <button class="brief-btn-primary" id="brief-copy-btn" style="display:none">📋 Copy Email</button>
+      <button class="brief-btn-gmail" id="brief-gmail-btn" style="display:none">✉️ Open in Gmail</button>
       <button class="export-btn" onclick="closeBrief()" style="margin-left:auto">✕ Close</button>
     </div>
   </div>
