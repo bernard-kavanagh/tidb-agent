@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from agent.config import TIDB_CONNECTION_STRING, GEO_REGIONS, ANTHROPIC_API_KEY
+from agent.config import TIDB_CONNECTION_STRING, GEO_REGIONS, COUNTRY_GEO, ANTHROPIC_API_KEY
 from agent.storage import get_conn, get_leads, get_countries_summary, update_lead_status
 from agent.embeddings import hybrid_search, VECTOR_SEARCH_AVAILABLE
 from agent.case_matcher import match_case_studies
@@ -329,6 +329,20 @@ if not VECTOR_SEARCH_AVAILABLE:
     _agent_storage.embed_lead = lambda *a, **kw: None
 
 
+def _geo_from_tld(url: str) -> str:
+    import re
+    tld = re.search(r"\.([a-z]{2,6})(?:/|$|\?|#)", url.lower())
+    tld = tld.group(1) if tld else "com"
+    if tld in ("eu", "de", "fr", "co.uk", "uk", "nl", "es", "it", "pl", "se",
+               "no", "dk", "fi", "be", "at", "ch", "ie", "pt", "cz", "hu",
+               "ae", "sa", "za", "ng", "ke", "il", "tr"):
+        return "EMEA"
+    if tld in ("jp", "cn", "sg", "au", "nz", "in", "kr", "hk", "tw", "my",
+               "id", "th", "vn", "ph", "pk", "bd"):
+        return "APAC"
+    return "NAMERICA"
+
+
 @app.post("/api/lookup")
 async def api_lookup(request: Request, body: dict, user=Depends(get_current_user)):
     import re
@@ -337,9 +351,6 @@ async def api_lookup(request: Request, body: dict, user=Depends(get_current_user
     url = (body.get("url") or "").strip()
     if not url:
         raise HTTPException(status_code=400, detail="url is required")
-    geo = (body.get("geo") or "EMEA").upper()
-    if geo not in ("EMEA", "NAMERICA", "APAC"):
-        geo = "EMEA"
     domain = re.sub(r"^https?://", "", url.lower())
     domain = re.sub(r"^www\.", "", domain)
     domain = domain.split("/")[0].split("?")[0].split("#")[0]
@@ -359,19 +370,22 @@ async def api_lookup(request: Request, body: dict, user=Depends(get_current_user
         conn.close()
 
     try:
+        geo = _geo_from_tld(url)
         client = _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         scraped = _scrape_text(url)
         analysis = _analyse_company(client, company_name=domain, website=url,
                                     content=scraped, geo=geo)
         if not analysis or (analysis.get("fit_score") or 0) < 1:
             return dict(source="error", message="Could not analyse this URL")
+        hq_country = analysis.get("hq_country") or ""
+        geo = COUNTRY_GEO.get(hq_country, geo)
         conn2 = _db()
         try:
             lead_id = _upsert_lead(
                 conn2,
                 company_name=analysis.get("company_name") or domain,
                 website=url,
-                country=analysis.get("hq_country") or "Manual Entry",
+                country=hq_country or "Manual Entry",
                 region="Manual", geo=geo,
                 analysis=analysis, source_url=url,
             )

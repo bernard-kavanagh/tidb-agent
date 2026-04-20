@@ -1676,7 +1676,6 @@
 
   async function doLookup() {
     const url = document.getElementById('al-url').value.trim();
-    const geo = document.getElementById('al-geo').value;
     const resultEl = document.getElementById('al-result');
     const btn = document.getElementById('al-lookup-btn');
     if (!url) return;
@@ -1691,7 +1690,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, geo }),
+        body: JSON.stringify({ url }),
       });
       const data = await resp.json();
 
@@ -1978,11 +1977,6 @@
       <div class="al-row">
         <input id="al-url" type="url" placeholder="https://example.com"
                onkeydown="if(event.key==='Enter') doLookup()">
-        <select id="al-geo">
-          <option value="EMEA">EMEA</option>
-          <option value="NAMERICA">NAMERICA</option>
-          <option value="APAC">APAC</option>
-        </select>
       </div>
       <button id="al-lookup-btn" onclick="doLookup()">Lookup</button>
       <div class="al-banner-area" id="al-banner-area"></div>
