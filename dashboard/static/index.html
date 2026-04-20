@@ -2079,7 +2079,7 @@
   function shareLink(leadId) {
     const url = window.location.origin + '/lead/' + leadId;
     navigator.clipboard.writeText(url).then(function() {
-      showToast('Link copied! ' + url, 'info', 4000);
+      showToast('Link copied!', 'info', 2000);
     }).catch(function() {
       showToast('Could not copy: ' + url, 'warn', 5000);
     });
@@ -2106,8 +2106,8 @@
         (stack ? '<span class="stack-pill">🔧 '+esc(stack)+'</span>' : '') +
         '<span style="color:var(--muted);font-size:12px">'+flag(lead.country)+' '+esc(lead.country||'')+(lead.region?' · '+esc(lead.region):'')+'</span>' +
       '</div>';
-    modal.querySelector('.ld-score').className = 'score score-'+score;
-    modal.querySelector('.ld-score').textContent = score;
+    const scoreEl = modal.querySelector('.ld-score');
+    if (scoreEl) { scoreEl.className = 'score score-'+score; scoreEl.textContent = score; }
 
     const statusHtml = '<select class="status-select status-'+(lead.status||'new')+'" onchange="updateStatus('+lead.id+', this)">'+statusOptions(lead.status)+'</select>';
     const cachedBrief = briefCache.get(lead.id);
