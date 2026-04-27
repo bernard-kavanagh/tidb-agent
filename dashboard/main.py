@@ -18,7 +18,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from agent.config import TIDB_CONNECTION_STRING, GEO_REGIONS, COUNTRY_GEO, ANTHROPIC_API_KEY
 from agent.storage import get_conn, get_leads, get_countries_summary, update_lead_status
-from agent.embeddings import hybrid_search, VECTOR_SEARCH_AVAILABLE
+from agent.embeddings import VECTOR_SEARCH_AVAILABLE
 from agent.case_matcher import match_case_studies
 
 app = FastAPI(title="TiDB Cloud Lead Pipeline Dashboard")
@@ -260,11 +260,7 @@ async def api_search(
     request: Request,
     user=Depends(get_current_user),
     q: str = Query(..., min_length=2),
-    top_k: int = Query(20, ge=1, le=100),
     min_score: int = Query(1, ge=1, le=10),
-    geo: str | None = Query(None),
-    country: str | None = Query(None),
-    region: str | None = Query(None),
     response: Response = None,
 ):
     response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
@@ -272,37 +268,19 @@ async def api_search(
     try:
         log_access(conn, user["email"], "search", q, getattr(request.client, "host", ""))
         kw = "%" + q + "%"
-        kw_filters = ["(company_name LIKE %s OR website LIKE %s)", "fit_score >= %s"]
-        kw_params: list = [kw, kw, min_score]
-        if geo:     kw_filters.append("geo = %s");     kw_params.append(geo)
-        if country: kw_filters.append("country = %s"); kw_params.append(country)
-        if region:  kw_filters.append("region = %s");  kw_params.append(region)
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM leads WHERE " + " AND ".join(kw_filters) + " LIMIT %s",
-                kw_params + [top_k],
+                "SELECT * FROM leads WHERE "
+                "(company_name LIKE %s OR website LIKE %s OR industry LIKE %s OR description LIKE %s) "
+                "AND fit_score >= %s "
+                "ORDER BY fit_score DESC LIMIT 100",
+                [kw, kw, kw, kw, min_score],
             )
-            keyword_rows = cur.fetchall() or []
-        for r in keyword_rows:
-            r["similarity_pct"] = 100
-        keyword_ids = set(r["id"] for r in keyword_rows)
-
-        vector_results = hybrid_search(
-            conn, query=q, top_k=top_k, min_score=min_score,
-            geo=geo or None, country=country or None, region=region or None,
-        )
-        results = list(keyword_rows) + [r for r in vector_results if r["id"] not in keyword_ids]
-
-        import json as _json
+            results = cur.fetchall() or []
         for lead in results:
             if lead.get("created_at"):
                 lead["created_at"] = lead["created_at"].isoformat()
-            emb = lead.pop("embedding", None)
-            try:
-                emb_vec = _json.loads(emb) if isinstance(emb, str) else emb
-                lead["matched_case_studies"] = match_case_studies(emb_vec) if emb_vec else []
-            except Exception:
-                lead["matched_case_studies"] = []
+            lead.pop("embedding", None)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -317,7 +295,7 @@ async def api_update_status(
     status = body.get("status")
     valid_statuses = (
         "new", "contacted", "meeting_booked", "qualified", "poc_active",
-        "closed_won", "closed_lost", "disqualified",
+        "closed_won", "closed_lost", "disqualified", "invalid",
     )
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")

@@ -581,7 +581,8 @@
     .search-wrap {
       position: relative;
       flex: 1;
-      max-width: 360px;
+      min-width: 280px;
+      max-width: 400px;
     }
     .search-wrap input {
       width: 100%;
@@ -589,43 +590,51 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
-      padding: 6px 36px 6px 12px;
+      padding: 6px 52px 6px 12px;
       font-size: 13px;
       outline: none;
       transition: border-color 0.15s;
+      box-sizing: border-box;
     }
     .search-wrap input:focus { border-color: var(--accent); }
     .search-wrap input::placeholder { color: var(--muted); }
     .search-icon {
       position: absolute;
-      right: 10px;
+      right: 28px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--muted);
       font-size: 13px;
       pointer-events: none;
     }
-    .search-mode-badge {
+    .search-clear-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 2px;
       display: none;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: rgba(24,99,220,0.2);
-      color: var(--accent);
-      white-space: nowrap;
-      align-self: center;
+      line-height: 1;
     }
-    .search-mode-badge.visible { display: inline-block; }
-    .similarity-pill {
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      background: rgba(24,99,220,0.2);
-      color: var(--accent);
-      white-space: nowrap;
-      font-weight: 600;
+    .search-clear-btn:hover { color: var(--text); }
+    #search-banner {
+      display: none;
+      padding: 8px 14px;
+      background: rgba(24,99,220,0.1);
+      border: 1px solid rgba(24,99,220,0.3);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 8px;
     }
+    #search-banner a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+    .status-invalid { color: #ef4444; }
+    tr.lead-invalid td { opacity: 0.35; }
 
     /* Export buttons */
     .export-btn {
@@ -929,11 +938,11 @@
     <span id="lead-count-indicator" style="display:none"></span>
 
     <div class="search-wrap">
-      <input type="text" id="search-input" placeholder="Search: branching, vector, AI agents…"
+      <input type="text" id="search-input" placeholder="Search companies, industry, keywords…"
              oninput="onSearchInput()" onkeydown="if(event.key==='Escape'){clearSearch()}">
       <span class="search-icon">⌕</span>
+      <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">✕</button>
     </div>
-    <span class="search-mode-badge" id="search-badge">Vector Search</span>
 
     <div class="filter-group">
       <label>Status</label>
@@ -947,6 +956,7 @@
         <option value="closed_won">Closed Won</option>
         <option value="closed_lost">Closed Lost</option>
         <option value="disqualified">Disqualified</option>
+        <option value="invalid">Invalid</option>
       </select>
     </div>
 
@@ -965,8 +975,9 @@
     </div>
 
     <div class="filter-group" style="margin-left:8px; gap:6px;">
-      <button class="export-btn" onclick="exportCSV()" title="Download CSV">⬇ CSV</button>
+      <button class="export-btn" id="csv-export-btn" onclick="exportCSV()" title="Export leads as CSV">⬇ CSV</button>
       <button class="export-btn sheets" onclick="exportSheets()" title="Open in Google Sheets">📊 Sheets</button>
+      <button class="export-btn" id="show-invalid-btn" onclick="toggleShowInvalid()" style="display:none">Show invalid (<span id="invalid-count">0</span>)</button>
       <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
       <button class="export-btn add-lead-btn" onclick="openAddLead()" title="Add lead by URL">+ Add Lead</button>
       <button class="targets-btn" id="targets-btn" onclick="showListsView()">⭐ My Targets<span class="targets-badge hidden" id="targets-badge">0</span></button>
@@ -1008,6 +1019,8 @@
     <span class="qf-pill warm"   id="qf-warm"      onclick="setQuickFilter(7)">Strong (7–8)</span>
     <span class="qf-pill cool"   id="qf-cool"      onclick="setQuickFilter(5)">Moderate (5–6)</span>
   </div>
+
+  <div id="search-banner"></div>
 
   <div id="table-wrap">
     <div id="loading" style="display:none">
@@ -1089,6 +1102,7 @@
     ['closed_won',    'Closed Won 🎉'],
     ['closed_lost',   'Closed Lost'],
     ['disqualified',  'Disqualified'],
+    ['invalid',       'Invalid ✗'],
   ];
   function statusOptions(current) {
     return STATUS_DEFS.map(function(sv) {
@@ -1119,6 +1133,10 @@
   let sortDir = -1;
   let quickFilterMin    = null;
   let currentStackFilter = null;
+  let showInvalid       = false;
+  let isSearchMode      = false;
+  let currentSearchQuery = '';
+  let displayedLeads    = [];
   const briefCache = new Map();
 
   // ── Stack helper ──────────────────────────────────────────────────────
@@ -1354,6 +1372,21 @@
   function applyClientFilters() {
     const industry = document.getElementById('industry-filter').value;
     let filtered = currentLeads;
+
+    // Track invalids before hiding them
+    const invalidLeads = filtered.filter(l => l.status === 'invalid');
+    const invalidN = invalidLeads.length;
+    const invalidBtn = document.getElementById('show-invalid-btn');
+    const invalidCountEl = document.getElementById('invalid-count');
+    if (invalidN > 0) {
+      invalidBtn.style.display = '';
+      invalidCountEl.textContent = invalidN;
+      invalidBtn.textContent = (showInvalid ? 'Hide invalid (' : 'Show invalid (') + invalidN + ')';
+    } else {
+      invalidBtn.style.display = 'none';
+    }
+
+    if (!showInvalid) filtered = filtered.filter(l => l.status !== 'invalid');
     if (selectedCountries.size > 0) filtered = filtered.filter(l => selectedCountries.has(l.country));
     if (industry)   filtered = filtered.filter(l => l.industry === industry);
     if (quickFilterMin !== null) {
@@ -1361,8 +1394,10 @@
       filtered = filtered.filter(l => l.fit_score >= quickFilterMin && l.fit_score <= max);
     }
     filtered = sortLeads(filtered);
+    displayedLeads = filtered;
     updateTitle();
     updateLeadCountIndicator(filtered.length, currentLeads.length);
+    updateCSVTooltip();
     const empty = document.getElementById('empty');
     const table = document.getElementById('leads-table');
     if (!filtered.length) {
@@ -1371,6 +1406,16 @@
       empty.style.display = 'none'; table.style.display = 'table';
       renderTable(filtered); updateStats(filtered);
     }
+  }
+
+  function updateCSVTooltip() {
+    const btn = document.getElementById('csv-export-btn');
+    if (btn) btn.title = 'Export ' + displayedLeads.length + ' leads as CSV';
+  }
+
+  function toggleShowInvalid() {
+    showInvalid = !showInvalid;
+    applyClientFilters();
   }
 
   function updateLeadCountIndicator(shown, total) {
@@ -1487,6 +1532,7 @@
     for (const lead of leads) {
       const tr = document.createElement('tr');
       tr.dataset.leadId = lead.id;
+      if (lead.status === 'invalid') tr.classList.add('lead-invalid');
       const starred = myTargetIds.has(lead.id);
       tr.innerHTML = `
         <td>
@@ -1648,11 +1694,12 @@
   async function updateStatus(leadId, sel) {
     const newStatus = sel.value;
     sel.className = 'status-select status-' + newStatus;
+    const tr = sel.closest('tr');
     const positiveStatuses = ['contacted','meeting_booked','qualified','poc_active','closed_won'];
     if (positiveStatuses.includes(newStatus)) {
-      const tr = sel.closest('tr');
       if (tr) { tr.classList.remove('just-contacted'); void tr.offsetWidth; tr.classList.add('just-contacted'); setTimeout(() => tr.classList.remove('just-contacted'), 1200); }
     }
+    if (tr) tr.classList.toggle('lead-invalid', newStatus === 'invalid');
     const lead = currentLeads.find(l => l.id === leadId);
     if (lead) lead.status = newStatus;
     updateStats(currentLeads);
@@ -1669,69 +1716,33 @@
     }
   }
 
-  // ── Semantic search ───────────────────────────────────────────────────
+  // ── Search ────────────────────────────────────────────────────────────
   let searchTimer = null;
-
-  function looksLikeCompanyOrUrl(q) {
-    if (q.includes('http') || q.includes('.')) return true;
-    return q.trim().split(/\s+/).length < 4;
-  }
-
-  function clientSideMatch(q) {
-    const lower = q.toLowerCase();
-    return currentLeads
-      .filter(l =>
-        (l.company_name || '').toLowerCase().includes(lower) ||
-        (l.website || '').toLowerCase().includes(lower)
-      )
-      .map(l => ({ ...l, _nameMatch: true }));
-  }
-
-  function mergeSearchResults(nameMatches, vectorResults) {
-    const seen = new Set(nameMatches.map(l => l.id));
-    const deduped = (vectorResults || []).filter(l => !seen.has(l.id));
-    return [...nameMatches, ...deduped];
-  }
-
-  function showMergedResults(merged) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('empty').style.display = 'none';
-    document.getElementById('search-badge').classList.add('visible');
-    if (!merged.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
-    currentLeads = merged;
-    document.getElementById('leads-table').style.display = 'table';
-    renderSearchResults(merged); updateStats(merged);
-  }
 
   function onSearchInput() {
     clearTimeout(searchTimer);
     const q = document.getElementById('search-input').value.trim();
-    if (!q) { clearSearch(); loadLeads(); return; }
-
-    // Immediate client-side match for company names / URLs
-    if (looksLikeCompanyOrUrl(q)) {
-      const nameMatches = clientSideMatch(q);
-      if (nameMatches.length > 0) showMergedResults(mergeSearchResults(nameMatches, []));
-    }
-
-    searchTimer = setTimeout(() => runSearch(q), 400);
+    const clearBtn = document.getElementById('search-clear-btn');
+    clearBtn.style.display = q ? '' : 'none';
+    if (!q) { hideSearchBanner(); isSearchMode = false; currentSearchQuery = ''; applyClientFilters(); return; }
+    searchTimer = setTimeout(() => runSearch(q), 350);
   }
 
   function clearSearch() {
     document.getElementById('search-input').value = '';
-    document.getElementById('search-badge').classList.remove('visible');
+    document.getElementById('search-clear-btn').style.display = 'none';
+    hideSearchBanner();
+    isSearchMode = false;
+    currentSearchQuery = '';
+    applyClientFilters();
   }
 
   async function runSearch(q) {
-    const score  = document.getElementById('score-filter').value;
-    const status = document.getElementById('status-filter').value;
-    const params = new URLSearchParams({ q, min_score: score, top_k: 50 });
-    if (currentGeo) params.set('geo', currentGeo);
-    if (status)     params.set('status', status);
+    const score = document.getElementById('score-filter').value;
+    const params = new URLSearchParams({ q, min_score: score });
     document.getElementById('loading').style.display     = 'flex';
     document.getElementById('empty').style.display       = 'none';
     document.getElementById('leads-table').style.display = 'none';
-    document.getElementById('search-badge').classList.add('visible');
     let leads;
     try {
       leads = await cachedFetch(BASE_PATH + '/api/search?' + params);
@@ -1742,101 +1753,63 @@
       errEl.style.display = 'block';
       return;
     }
-    // Merge: client-side name matches first, then vector results
-    const nameMatches = looksLikeCompanyOrUrl(q) ? clientSideMatch(q) : [];
-    const merged = mergeSearchResults(nameMatches, leads);
-    showMergedResults(merged);
+    document.getElementById('loading').style.display = 'none';
+    isSearchMode = true;
+    currentSearchQuery = q;
+    displayedLeads = leads;
+    showSearchBanner(q, leads.length);
+    updateCSVTooltip();
+    if (!leads.length) {
+      document.getElementById('empty').style.display = 'flex'; updateStats([]); return;
+    }
+    document.getElementById('leads-table').style.display = 'table';
+    renderTable(leads); updateStats(leads);
   }
 
-  function renderSearchResults(leads) {
-    const tbody = document.getElementById('leads-body');
-    tbody.innerHTML = '';
-    for (const lead of leads) {
-      const sim = lead._nameMatch
-        ? '<span class="name-match-pill">Name match</span>'
-        : (lead.similarity_pct != null ? '<span class="similarity-pill">' + lead.similarity_pct + '% match</span>' : '');
-      const tr = document.createElement('tr');
-      tr.dataset.leadId = lead.id;
-      const starred = myTargetIds.has(lead.id);
-      tr.innerHTML = `
-        <td>
-          <div class="company-cell">
-            <button class="star-btn${starred ? ' starred' : ''}" data-lead-id="${lead.id}" onclick="starById(${lead.id})" title="${starred ? 'Remove from My Targets' : 'Add to My Targets'}">${starred ? '★' : '☆'}</button>
-            ${logoCell(lead)}
-            <div class="company-info" style="flex:1">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div class="company-name"><a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.company_name)}</a></div>
-                <span class="score score-${lead.fit_score} score-inline">${lead.fit_score}</span>
-              </div>
-              <div class="company-meta">
-                ${lead.industry ? `<span class="industry-pill">${esc(lead.industry)}</span>` : ''}
-                ${lead.company_size && lead.company_size !== 'Unknown' ? `<span class="size-pill">👥 ${esc(lead.company_size)}</span>` : ''}
-                ${sim}
-              </div>
-              ${getStack(lead) ? `<div class="company-meta" style="margin-top:2px"><span class="stack-pill">🔧 ${esc(getStack(lead))}</span></div>` : ''}
-              <div class="company-meta" style="margin-top:2px">
-                ${flag(lead.country)} ${esc(lead.country)} · <span style="color:var(--muted)">${esc(lead.region)}</span>
-              </div>
-              <div class="company-actions">
-                <span class="action-link" onclick="copyShareLink(${lead.id})" title="Copy share link">🔗 Share</span>
-                <span class="action-link" onclick="generateBrief(${lead.id})" title="Generate outreach email">✉️ Email</span>
-                <span class="action-link" onclick="viewFullDetails(${lead.id})" title="View all details">📄 Details</span>
-              </div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <div class="collapsible-cell">
-            <div class="collapsible-text" id="desc-${lead.id}">${esc(lead.description || '—')}</div>
-            ${(lead.description || '').length > 120 ? `<button class="expand-btn" onclick="toggleExpand('desc-${lead.id}', this)">Show more</button>` : ''}
-          </div>
-        </td>
-        <td><div class="pain-cell">${painCell(lead)}</div></td>
-        <td><div class="pain-cell">${recCell(lead)}</div></td>
-        <td><div class="contacts">${contactTags(lead)}</div></td>
-        <td>
-          <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this)">
-            ${statusOptions(lead.status)}
-          </select>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    }
+  function showSearchBanner(q, count) {
+    const el = document.getElementById('search-banner');
+    el.innerHTML = 'Search results for: <strong>' + esc(q) + '</strong> (' + count + ' result' + (count === 1 ? '' : 's') + ') — <a onclick="clearSearch()">Clear search</a>';
+    el.style.display = 'block';
+  }
+
+  function hideSearchBanner() {
+    const el = document.getElementById('search-banner');
+    if (el) el.style.display = 'none';
   }
 
   // ── Export ───────────────────────────────────────────────────────────
   function buildCSV(leads) {
-    const rows = [['Company','Website','Country','Region','Industry','Company Size','Description','TiDB Pain','TiDB Use Case','Recommendation','Fit Score','Status','ICP Contacts']];
+    const cols = ['company_name','website','country','region','geo','industry','company_size','fit_score','status','description','tidb_pain','tidb_use_case','outreach_recommendation'];
+    const headers = ['Company','Website','Country','Region','Geo','Industry','Company Size','Fit Score','Status','Description','TiDB Pain','TiDB Use Case','Outreach Recommendation'];
+    const rows = [headers];
     for (const l of leads) {
-      const contacts = (l.contacts || []).map(c => (typeof c === 'object' ? c.role : c) || '').join('; ');
-      rows.push([l.company_name||'', l.website||'', l.country||'', l.region||'', l.industry||'', l.company_size||'', l.description||'', l.tidb_pain||'', l.tidb_use_case||'', l.outreach_recommendation||'', l.fit_score??'', l.status||'', contacts]);
+      rows.push(cols.map(k => l[k] ?? ''));
     }
     return rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
   }
 
   function csvFilename() {
-    const score = document.getElementById('score-filter').value;
-    let name = 'tidb-leads-score' + score + '+';
-    if (selectedCountries.size > 0) name += '-' + [...selectedCountries].join('-').toLowerCase().replace(/ /g,'-');
-    else name += '-' + currentGeo.toLowerCase();
-    return name + '.csv';
+    const d = new Date().toISOString().slice(0, 10);
+    return 'tidb_leads_filtered_' + d + '.csv';
   }
 
-  function downloadCSVBlob() {
-    const blob = new Blob([buildCSV(currentLeads)], { type: 'text/csv' });
+  function downloadCSVBlob(leads) {
+    const blob = new Blob([buildCSV(leads)], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: csvFilename() });
     a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function exportCSV() {
-    if (!currentLeads.length) return showToast('No leads to export.', 'warn');
-    downloadCSVBlob(); showToast('Downloaded ' + currentLeads.length + ' leads as CSV.');
+    const leads = displayedLeads.length ? displayedLeads : currentLeads;
+    if (!leads.length) return showToast('No leads to export.', 'warn');
+    downloadCSVBlob(leads); showToast('Downloaded ' + leads.length + ' leads as CSV.');
   }
 
   function exportSheets() {
-    if (!currentLeads.length) return showToast('No leads to export.', 'warn');
-    downloadCSVBlob();
+    const leads = displayedLeads.length ? displayedLeads : currentLeads;
+    if (!leads.length) return showToast('No leads to export.', 'warn');
+    downloadCSVBlob(leads);
     setTimeout(() => window.open('https://sheets.new', '_blank'), 300);
     showToast('CSV downloaded — in the new Sheet: File → Import → Upload the file.', 'info', 6000);
   }
