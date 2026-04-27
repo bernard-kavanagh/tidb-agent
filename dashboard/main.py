@@ -182,7 +182,7 @@ async def api_leads(
     status: str | None = Query(None),
     response: Response = None,
 ):
-    response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
+    response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=7200"
     conn = _db()
     try:
         detail = str(dict(request.query_params))
