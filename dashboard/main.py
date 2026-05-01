@@ -178,7 +178,7 @@ async def api_leads(
     geo: str | None = Query(None),
     country: str | None = Query(None),
     region: str | None = Query(None),
-    min_score: int = Query(1, ge=1, le=10),
+    min_score: int = Query(7, ge=1, le=10),
     status: str | None = Query(None),
     response: Response = None,
 ):
@@ -260,7 +260,7 @@ async def api_search(
     request: Request,
     user=Depends(get_current_user),
     q: str = Query(..., min_length=2),
-    min_score: int = Query(1, ge=1, le=10),
+    min_score: int = Query(7, ge=1, le=10),
     response: Response = None,
 ):
     response.headers["Cache-Control"] = "public, s-maxage=300, stale-while-revalidate=600"
@@ -269,13 +269,22 @@ async def api_search(
         log_access(conn, user["email"], "search", q, getattr(request.client, "host", ""))
         kw = "%" + q + "%"
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT * FROM leads WHERE "
-                "(company_name LIKE %s OR website LIKE %s OR industry LIKE %s OR description LIKE %s) "
-                "AND fit_score >= %s "
-                "ORDER BY fit_score DESC LIMIT 100",
-                [kw, kw, kw, kw, min_score],
-            )
+            try:
+                cur.execute(
+                    "SELECT * FROM leads WHERE "
+                    "(MATCH(company_name) AGAINST(%s IN BOOLEAN MODE) OR website LIKE %s) "
+                    "AND fit_score >= %s "
+                    "ORDER BY fit_score DESC LIMIT 100",
+                    [q, kw, min_score],
+                )
+            except Exception:
+                cur.execute(
+                    "SELECT * FROM leads WHERE "
+                    "(company_name LIKE %s OR website LIKE %s) "
+                    "AND fit_score >= %s "
+                    "ORDER BY fit_score DESC LIMIT 100",
+                    [kw, kw, min_score],
+                )
             results = cur.fetchall() or []
         for lead in results:
             if lead.get("created_at"):
