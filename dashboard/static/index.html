@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TiDB Cloud · Global Lead Pipeline</title>
+  <link rel='icon' type='image/x-icon' href='/static/favicon.ico'>
   <!-- TiDB brand font (Moderat), fallback to Inter -->
   <style>
     @font-face {
@@ -1832,6 +1833,7 @@
     const clearBtn = document.getElementById('search-clear-btn');
     clearBtn.style.display = q ? '' : 'none';
     if (!q) { hideSearchBanner(); isSearchMode = false; currentSearchQuery = ''; applyClientFilters(); return; }
+    if (q.length < 2) { showSearchHint(); return; }
     searchTimer = setTimeout(() => runSearch(q), 350);
   }
 
@@ -1855,6 +1857,9 @@
       leads = await cachedFetch(BASE_PATH + '/api/search?' + params);
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
+      if (e.message && e.message.startsWith('422')) {
+        showSearchHint(); return;
+      }
       const errEl = document.getElementById('error');
       errEl.textContent = '⚠️ Search failed: ' + e.message;
       errEl.style.display = 'block';
@@ -1871,6 +1876,12 @@
     }
     document.getElementById('leads-table').style.display = 'table';
     renderTable(leads); updateStats(leads);
+  }
+
+  function showSearchHint() {
+    const el = document.getElementById('search-banner');
+    el.textContent = 'Type at least 2 characters to search';
+    el.style.display = 'block';
   }
 
   function showSearchBanner(q, count) {
