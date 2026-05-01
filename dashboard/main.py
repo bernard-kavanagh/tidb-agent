@@ -180,26 +180,96 @@ async def api_leads(
     region: str | None = Query(None),
     min_score: int = Query(7, ge=1, le=10),
     status: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    sort_by: str = Query("fit_score"),
+    sort_dir: str = Query("desc"),
     response: Response = None,
 ):
     response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=7200"
+
+    _sort_col_map = {
+        "fit_score": "l.fit_score",
+        "company_name": "l.company_name",
+        "status": "l.status",
+        "created_at": "l.created_at",
+    }
+    sort_col_sql = _sort_col_map.get(sort_by, "l.fit_score")
+    sort_dir_sql = "DESC" if sort_dir.lower() == "desc" else "ASC"
+
     conn = _db()
     try:
+        import json as _json
         detail = str(dict(request.query_params))
         log_access(conn, user["email"], "view_leads", detail, getattr(request.client, "host", ""))
-        leads = get_leads(conn, geo=geo, country=country, region=region,
-                          min_score=min_score, status=status)
-        import json as _json
-        for lead in leads:
-            if lead.get("created_at"):
-                lead["created_at"] = lead["created_at"].isoformat()
-            emb = lead.pop("embedding", None)
+
+        where_parts = ["l.fit_score >= %s"]
+        params: list = [min_score]
+        if geo:
+            where_parts.append("l.geo = %s"); params.append(geo)
+        if country:
+            where_parts.append("l.country = %s"); params.append(country)
+        if region:
+            where_parts.append("l.region = %s"); params.append(region)
+        if status:
+            where_parts.append("l.status = %s"); params.append(status)
+        where_sql = " AND ".join(where_parts)
+
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT COUNT(*) AS cnt FROM leads l WHERE {where_sql}", params)
+            total_count = int((cur.fetchone() or {}).get("cnt", 0))
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        offset = (page - 1) * page_size
+
+        query = f"""
+            SELECT
+                l.id, l.company_name, l.website, l.country, l.region, l.geo,
+                l.industry, l.company_size, l.description, l.tidb_pain, l.tidb_use_case,
+                l.fit_score, l.status, l.created_at, l.embedding, l.outreach_recommendation,
+                COALESCE(JSON_ARRAYAGG(c.role), JSON_ARRAY()) AS contact_roles,
+                COALESCE(JSON_ARRAYAGG(c.linkedin_url), JSON_ARRAY()) AS contact_links
+            FROM leads l
+            LEFT JOIN contacts c ON c.lead_id = l.id
+            WHERE {where_sql}
+            GROUP BY l.id
+            ORDER BY {sort_col_sql} {sort_dir_sql}
+            LIMIT %s OFFSET %s
+        """
+        with conn.cursor() as cur:
+            cur.execute(query, params + [page_size, offset])
+            rows = cur.fetchall() or []
+
+        leads = []
+        for row in rows:
+            row = dict(row)
+            if row.get("created_at"):
+                row["created_at"] = row["created_at"].isoformat()
+            emb = row.pop("embedding", None)
+            roles = row.pop("contact_roles", None)
+            links = row.pop("contact_links", None)
+            if isinstance(roles, str): roles = _json.loads(roles)
+            if isinstance(links, str): links = _json.loads(links)
+            roles = [r for r in (roles or []) if r is not None]
+            links = links or []
+            row["contacts"] = [
+                {"role": r, "linkedin_url": links[i] if i < len(links) else None}
+                for i, r in enumerate(roles)
+            ]
             try:
                 emb_vec = _json.loads(emb) if isinstance(emb, str) else emb
-                lead["matched_case_studies"] = match_case_studies(emb_vec) if emb_vec else []
+                row["matched_case_studies"] = match_case_studies(emb_vec) if emb_vec else []
             except Exception:
-                lead["matched_case_studies"] = []
-        return leads
+                row["matched_case_studies"] = []
+            leads.append(row)
+
+        return {
+            "leads": leads,
+            "total": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        }
     finally:
         conn.close()
 

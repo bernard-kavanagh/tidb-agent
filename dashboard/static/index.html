@@ -875,6 +875,28 @@
     }
     .sidebar-collapse-toggle:hover { text-decoration: underline; }
 
+    /* ── Pagination ─────────────────────────────────────────────────────── */
+    #pagination {
+      display: none; align-items: center; justify-content: center;
+      gap: 8px; padding: 10px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
+    }
+    #pagination.visible { display: flex; }
+    .page-btn {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 5px 10px; font-size: 12px; cursor: pointer;
+      transition: background 0.1s, border-color 0.1s; font-family: inherit;
+    }
+    .page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); border-color: var(--muted); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #page-info { font-size: 12px; color: var(--muted); white-space: nowrap; margin: 0 4px; }
+    #page-size-select {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--muted); padding: 4px 8px; font-size: 12px; cursor: pointer;
+      margin-left: 8px;
+    }
+
     /* ── Sidebar collapse/expand ─────────────────────────────────────── */
     #sidebar { transition: width 0.2s ease, min-width 0.2s ease; }
     #sidebar.collapsed { width: 48px; min-width: 48px; overflow: hidden; }
@@ -946,7 +968,7 @@
 
     <div class="filter-group">
       <label>Status</label>
-      <select id="status-filter" onchange="loadLeads()">
+      <select id="status-filter" onchange="currentPage=1; loadLeads()">
         <option value="">All</option>
         <option value="new">New</option>
         <option value="contacted">Contacted</option>
@@ -970,12 +992,12 @@
     <div class="filter-group">
       <label>Min score</label>
       <input type="range" id="score-filter" min="1" max="10" value="7"
-             oninput="document.getElementById('score-label').textContent=this.value; loadLeads()">
+             oninput="document.getElementById('score-label').textContent=this.value; currentPage=1; loadLeads()">
       <span id="score-label">7</span>
     </div>
 
     <div class="filter-group" style="margin-left:8px; gap:6px;">
-      <button class="export-btn" id="csv-export-btn" onclick="exportCSV()" title="Export leads as CSV">⬇ CSV</button>
+      <button class="export-btn" id="csv-export-btn" onclick="exportCSV()" title="Exports current page (50 leads). Use filters to narrow results.">⬇ CSV</button>
       <button class="export-btn sheets" onclick="exportSheets()" title="Open in Google Sheets">📊 Sheets</button>
       <button class="export-btn" id="show-invalid-btn" onclick="toggleShowInvalid()" style="display:none">Show invalid (<span id="invalid-count">0</span>)</button>
       <button class="export-btn" onclick="refreshData()" title="Clear cache and reload">↻ Refresh</button>
@@ -1043,6 +1065,21 @@
       <tbody id="leads-body"></tbody>
     </table>
   </div>
+
+  <!-- ── Pagination ──────────────────────────────────────────────────────── -->
+  <div id="pagination">
+    <button class="page-btn" id="btn-first" onclick="goToPage(1)">« First</button>
+    <button class="page-btn" id="btn-prev"  onclick="goToPage(currentPage-1)">‹ Prev</button>
+    <span id="page-info">Page 1 of 1</span>
+    <button class="page-btn" id="btn-next"  onclick="goToPage(currentPage+1)">Next ›</button>
+    <button class="page-btn" id="btn-last"  onclick="goToPage(totalPages)">Last »</button>
+    <select id="page-size-select" onchange="changePageSize(this.value)" title="Leads per page">
+      <option value="50" selected>50 / page</option>
+      <option value="100">100 / page</option>
+      <option value="200">200 / page</option>
+    </select>
+  </div>
+
   <!-- ── My Targets view ───────────────────────────────────────────────── -->
   <div id="lists-view">
     <div class="lists-header">
@@ -1129,6 +1166,7 @@
   let selectedCountries = new Set();
   let allRegions        = {};
   let allSummary        = [];
+  let allPipeline       = {};
   let sortCol = 'score';
   let sortDir = -1;
   let quickFilterMin    = null;
@@ -1138,6 +1176,12 @@
   let currentSearchQuery = '';
   let displayedLeads    = [];
   const briefCache = new Map();
+
+  // ── Pagination state ──────────────────────────────────────────────────
+  let currentPage  = 1;
+  let totalPages   = 1;
+  let pageSize     = 50;
+  let totalLeads   = 0;
 
   // ── Stack helper ──────────────────────────────────────────────────────
   function getStack(lead) {
@@ -1195,6 +1239,7 @@
     ]);
     allRegions = _regions;
     allSummary = Array.isArray(_summary) ? _summary : (_summary.countries || []);
+    allPipeline = (typeof _summary === 'object' && !Array.isArray(_summary)) ? (_summary.pipeline || {}) : {};
     buildSidebar();
     loadCurrentUser();
     await loadLeads();
@@ -1227,6 +1272,7 @@
     document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
     allItem.classList.add('active');
     clearSearch();
+    currentPage = 1;
     loadLeads();
   }
 
@@ -1350,12 +1396,14 @@
   function toggleCountry(country) {
     if (selectedCountries.has(country)) selectedCountries.delete(country);
     else selectedCountries.add(country);
+    currentPage = 1;
     buildSidebar(); applyClientFilters();
   }
 
   function toggleSubRegion(region, checked) {
     const countries = (allRegions[currentGeo] || {})[region] || [];
     countries.forEach(c => { if (checked) selectedCountries.add(c); else selectedCountries.delete(c); });
+    currentPage = 1;
     buildSidebar(); applyClientFilters();
   }
 
@@ -1365,7 +1413,9 @@
     el.classList.add('active');
     const geoLabel = { EMEA: 'All EMEA', NAMERICA: 'All Americas', APAC: 'All APAC' }[currentGeo] || `All ${currentGeo}`;
     document.getElementById('view-title').textContent = geoLabel;
-    clearSearch(); loadLeads();
+    clearSearch();
+    currentPage = 1;
+    loadLeads();
   }
 
   // ── Client-side filtering ─────────────────────────────────────────────
@@ -1410,7 +1460,7 @@
 
   function updateCSVTooltip() {
     const btn = document.getElementById('csv-export-btn');
-    if (btn) btn.title = 'Export ' + displayedLeads.length + ' leads as CSV';
+    if (btn) btn.title = 'Exports current page (' + displayedLeads.length + ' leads). Use filters to narrow results.';
   }
 
   function toggleShowInvalid() {
@@ -1448,7 +1498,8 @@
     const arrow = sortDir === 1 ? '▲' : '▼';
     const saEl = document.getElementById('sa-' + col);
     if (saEl) { saEl.textContent = arrow; saEl.closest('th').classList.add('sort-active'); }
-    applyClientFilters();
+    currentPage = 1;
+    loadLeads();
   }
 
   function setQuickFilter(min) {
@@ -1461,7 +1512,8 @@
       document.getElementById('score-filter').value = min;
       document.getElementById('score-label').textContent = min;
     }
-    applyClientFilters();
+    currentPage = 1;
+    loadLeads();
   }
 
   function updateTitle() {
@@ -1489,16 +1541,28 @@
     if (listsMode) hideListsView();
     const score  = document.getElementById('score-filter').value;
     const status = document.getElementById('status-filter').value;
-    const params = new URLSearchParams({ min_score: score });
+    const _sortColMap = { score: 'fit_score', company: 'company_name', status: 'status' };
+    const sortByParam  = _sortColMap[sortCol] || 'fit_score';
+    const sortDirParam = sortDir === -1 ? 'desc' : 'asc';
+    const params = new URLSearchParams({
+      min_score: score,
+      page: currentPage,
+      page_size: pageSize,
+      sort_by: sortByParam,
+      sort_dir: sortDirParam,
+    });
     if (currentGeo) params.set('geo',    currentGeo);
     if (status)     params.set('status', status);
+
     document.getElementById('loading').style.display     = 'flex';
     document.getElementById('empty').style.display       = 'none';
     document.getElementById('error').style.display       = 'none';
     document.getElementById('leads-table').style.display = 'none';
-    let leads;
+    document.getElementById('pagination').classList.remove('visible');
+
+    let resp;
     try {
-      leads = await cachedFetch(BASE_PATH + '/api/leads?' + params);
+      resp = await cachedFetch(BASE_PATH + '/api/leads?' + params);
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
       const errEl = document.getElementById('error');
@@ -1507,10 +1571,48 @@
       return;
     }
     document.getElementById('loading').style.display = 'none';
+
+    const leads  = resp.leads || [];
+    totalLeads   = resp.total || 0;
+    totalPages   = resp.total_pages || 1;
+    currentPage  = resp.page || currentPage;
+
     currentLeads = leads;
     updateIndustryDropdown();
-    if (!leads.length) { document.getElementById('empty').style.display = 'flex'; updateStats([]); return; }
+    updatePagination();
+
+    if (!leads.length && totalLeads === 0) {
+      document.getElementById('empty').style.display = 'flex';
+      updateStats([]);
+      return;
+    }
     applyClientFilters();
+  }
+
+  function goToPage(n) {
+    const p = Math.max(1, Math.min(n, totalPages));
+    if (p === currentPage) return;
+    currentPage = p;
+    loadLeads();
+  }
+
+  function changePageSize(sz) {
+    pageSize = parseInt(sz);
+    currentPage = 1;
+    _apiCache.clear();
+    loadLeads();
+  }
+
+  function updatePagination() {
+    const el = document.getElementById('pagination');
+    if (!el) return;
+    document.getElementById('page-info').textContent =
+      'Page ' + currentPage + ' of ' + totalPages + ' (' + (totalLeads.toLocaleString ? totalLeads.toLocaleString() : totalLeads) + ' leads)';
+    document.getElementById('btn-first').disabled = currentPage <= 1;
+    document.getElementById('btn-prev').disabled  = currentPage <= 1;
+    document.getElementById('btn-next').disabled  = currentPage >= totalPages;
+    document.getElementById('btn-last').disabled  = currentPage >= totalPages;
+    el.classList.toggle('visible', totalPages > 1);
   }
 
   // ── Refresh ──────────────────────────────────────────────────────────
@@ -1521,7 +1623,9 @@
       fetch(BASE_PATH + '/api/regions' + bust).then(r => r.json()),
       fetch(BASE_PATH + '/api/summary' + bust).then(r => r.json()),
     ]);
-    allRegions = r; allSummary = Array.isArray(s) ? s : (s.countries || []);
+    allRegions = r;
+    allSummary = Array.isArray(s) ? s : (s.countries || []);
+    allPipeline = (typeof s === 'object' && !Array.isArray(s)) ? (s.pipeline || {}) : {};
     buildSidebar(); await loadLeads(); showToast('Data refreshed.');
   }
 
@@ -1662,17 +1766,20 @@
   }
 
   function updateStats(leads) {
-    const total     = leads.length;
-    const hot       = leads.filter(l => l.fit_score >= 8).length;
-    const avg       = total ? (leads.reduce((s,l) => s + l.fit_score, 0) / total).toFixed(1) : '—';
-    const countries = new Set(leads.map(l => l.country)).size;
-    document.getElementById('s-total').textContent     = total;
-    document.getElementById('s-hot').textContent       = hot;
+    // Use allSummary for geo-level accurate totals; totalLeads for filtered total
+    let geoHot = 0, geoCountries = 0;
+    for (const row of allSummary) {
+      if (row.geo === currentGeo || (!row.geo && currentGeo === 'EMEA')) {
+        geoHot += parseInt(row.hot) || 0;
+        geoCountries++;
+      }
+    }
+    const avg = leads.length ? (leads.reduce((s,l) => s + l.fit_score, 0) / leads.length).toFixed(1) : '—';
+    document.getElementById('s-total').textContent     = totalLeads.toLocaleString ? totalLeads.toLocaleString() : totalLeads;
+    document.getElementById('s-hot').textContent       = geoHot;
     document.getElementById('s-avg').textContent       = avg;
-    document.getElementById('s-countries').textContent = countries;
+    document.getElementById('s-countries').textContent = geoCountries;
 
-    const statusCounts = {};
-    leads.forEach(l => { const s = l.status || 'new'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
     const pipelineOrder = [
       ['new',           'New',       '#888'],
       ['contacted',     'Contacted', '#22d3ee'],
@@ -1684,7 +1791,7 @@
     const funnelEl = document.getElementById('pipeline-funnel');
     if (funnelEl) {
       funnelEl.innerHTML = pipelineOrder.map(function(p, i) {
-        const n = statusCounts[p[0]] || 0;
+        const n = allPipeline[p[0]] || 0;
         const arrow = i < pipelineOrder.length - 1 ? '<span style="color:#555;margin:0 1px">›</span>' : '';
         return '<span class="pipeline-pill" style="color:'+p[2]+';border-color:'+p[2]+'40">'+p[1]+': '+n+'</span>'+arrow;
       }).join('');
@@ -2181,6 +2288,7 @@
     if (!u) { showToast('Signing in...', 'warn'); return; }
     listsMode = true;
     document.getElementById('table-wrap').style.display = 'none';
+    document.getElementById('pagination').classList.remove('visible');
     document.getElementById('stats-bar').style.display = 'none';
     document.getElementById('lists-view').classList.add('visible');
     try {
