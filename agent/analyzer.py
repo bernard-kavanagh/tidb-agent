@@ -279,7 +279,7 @@ def analyse_company(
     try:
         msg = client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=1536,
+            max_tokens=2048,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
