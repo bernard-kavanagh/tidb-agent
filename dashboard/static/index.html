@@ -1128,7 +1128,10 @@
 </div>
 
 <script>
-  const BASE_PATH = window.location.pathname.replace(/\/$/, '').replace(/\/[^\/]*$/, '') || '';
+  // App is always served from the domain root (see vercel.json: /(.*) -> api/index.py),
+  // including SPA routes like /lead/{id} and /admin. API calls are absolute from root.
+  // (Deriving this from pathname broke share links: /lead/480019 -> base "/lead" -> 404s.)
+  const BASE_PATH = '';
 
   // ── Status helpers ────────────────────────────────────────────────────
   const STATUS_DEFS = [
@@ -1176,7 +1179,18 @@
   let isSearchMode      = false;
   let currentSearchQuery = '';
   let displayedLeads    = [];
+  let detailLead        = null;
   const briefCache = new Map();
+
+  // Resolve a lead by id across every place one can currently be shown:
+  // the loaded page (currentLeads), the rendered rows (displayedLeads — also
+  // holds search results), the My Targets list, and the open detail modal.
+  function findLead(id) {
+    return currentLeads.find(l => l.id === id)
+        || displayedLeads.find(l => l.id === id)
+        || listsLeads.find(l => l.id === id)
+        || (detailLead && detailLead.id === id ? detailLead : null);
+  }
 
   // ── Pagination state ──────────────────────────────────────────────────
   let currentPage  = 1;
@@ -2105,19 +2119,19 @@
     badge.textContent = n; badge.classList.toggle('hidden', n === 0);
   }
   function starById(id) {
-    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    const lead = findLead(id);
     if (lead) starBtnClick(lead);
   }
 
   function copyShareLink(id) { shareLink(id); }
 
   function generateBrief(id) {
-    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    const lead = findLead(id);
     if (lead) openBrief(lead);
   }
 
   function viewFullDetails(id) {
-    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    const lead = findLead(id);
     if (lead) { openLeadDetail(lead); return; }
     fetch(BASE_PATH + '/api/leads/' + id)
       .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
@@ -2126,7 +2140,7 @@
   }
 
   function copyAllDetails(id) {
-    const lead = currentLeads.find(l => l.id === id) || listsLeads.find(l => l.id === id);
+    const lead = findLead(id);
     if (!lead) return;
     const txt = 'PAIN:\n' + (lead.tidb_pain || '') +
       (lead.tidb_use_case ? '\n\nUSE CASE:\n' + lead.tidb_use_case : '') +
@@ -2179,6 +2193,7 @@
   function openLeadDetail(lead) {
     const modal = document.getElementById('lead-detail-modal');
     if (!modal) return;
+    detailLead = lead;
     const score = lead.fit_score || 0;
     const stack = getStack(lead);
     let contactHtml = (lead.contacts || []).map(function(c) {
